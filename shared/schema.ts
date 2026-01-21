@@ -1,18 +1,71 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// === TABLE DEFINITIONS ===
+
+// Whitelist table - pre-filled data
+export const allowedStudents = pgTable("allowed_students", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  phoneNumber: text("phone_number").notNull().unique(),
+  seatNumber: integer("seat_number").notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  phoneNumber: text("phone_number").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  seatNumber: integer("seat_number"),
+  role: text("role").default("student").notNull(), // 'student' or 'teacher'
+  createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const schedules = pgTable("schedules", {
+  id: serial("id").primaryKey(),
+  dayOfWeek: text("day_of_week").notNull(), // Monday, Tuesday, etc.
+  periodNumber: integer("period_number").notNull(),
+  capacity: integer("capacity").default(4).notNull(),
+});
+
+export const reservations = pgTable("reservations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Foreign key handled in logic
+  scheduleId: integer("schedule_id").notNull(), // Foreign key handled in logic
+  photoUrl: text("photo_url").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// === SCHEMAS ===
+
+export const insertAllowedStudentSchema = createInsertSchema(allowedStudents).omit({ id: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true, name: true, seatNumber: true }); // Signup only takes phone/password
+export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true });
+export const insertReservationSchema = createInsertSchema(reservations).omit({ id: true, createdAt: true });
+
+// === EXPLICIT TYPES ===
+
+export type AllowedStudent = typeof allowedStudents.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Schedule = typeof schedules.$inferSelect;
+export type Reservation = typeof reservations.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+
+// Auth-specific types
+export type LoginRequest = { phoneNumber: string; password: string };
+export type SignupRequest = { phoneNumber: string; password: string };
+
+// Extended types for frontend display
+export type ReservationWithDetails = Reservation & {
+  studentName: string;
+  seatNumber: number;
+  day: string;
+  period: number;
+};
+
+export type ScheduleWithCount = Schedule & {
+  currentCount: number;
+  isReservedByUser: boolean;
+};
