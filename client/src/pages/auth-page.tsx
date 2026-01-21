@@ -12,7 +12,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const authSchema = z.object({
-  phoneNumber: z.string().min(5, "전화번호를 입력해주세요"),
+  phoneNumber: z.string().min(4, "전화번호를 입력해주세요"),
   password: z.string().min(4, "비밀번호는 최소 4자 이상이어야 합니다"),
 });
 
