@@ -6,6 +6,25 @@ import { z } from "zod";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: "./uploads",
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+    },
+  }),
+});
+
+// Ensure uploads directory exists
+if (!fs.existsSync("./uploads")) {
+  fs.mkdirSync("./uploads");
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -55,6 +74,23 @@ export async function registerRoutes(
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // === FILE UPLOAD ===
+  app.post("/api/upload", upload.single("file"), (req, res) => {
+    if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
+    const url = `/uploads/${req.file.filename}`;
+    res.json({ url });
+  });
+
+  // Serve uploads folder statically
+  app.use("/uploads", (req, res, next) => {
+    const filePath = path.join(process.cwd(), "uploads", req.path);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).end();
+    }
+  });
 
   // === AUTH ROUTES ===
 

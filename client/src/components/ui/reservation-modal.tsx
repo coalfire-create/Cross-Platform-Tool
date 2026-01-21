@@ -15,14 +15,33 @@ interface ReservationModalProps {
 }
 
 export function ReservationModal({ scheduleId, day, period, type, onClose }: ReservationModalProps) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [content, setContent] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const { createReservationMutation } = useReservations();
 
-  const handleSimulatedUpload = () => {
-    // Simulate photo upload by picking a random avatar or image
-    const mockUrl = `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop`;
-    setPhotoUrl(mockUrl);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("업로드 실패");
+
+      const data = await res.json();
+      setPhotoUrl(data.url);
+    } catch (err) {
+      console.error(err);
+      alert("이미지 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleConfirm = () => {
@@ -79,15 +98,26 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
                 </button>
               </div>
             ) : (
-              <div 
-                onClick={handleSimulatedUpload}
-                className="w-full h-32 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group"
-              >
+              <label className="w-full h-32 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group overflow-hidden relative">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
                 <div className="p-3 bg-secondary rounded-full group-hover:scale-110 transition-transform">
-                  <Camera className="w-6 h-6 text-primary" />
+                  <Upload className="w-6 h-6 text-primary" />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">질문 사진 업로드</span>
-              </div>
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">
+                  {isUploading ? "업로드 중..." : "질문 사진 업로드"}
+                </span>
+                {isUploading && (
+                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </label>
             )}
           </div>
         </div>
