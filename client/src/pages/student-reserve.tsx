@@ -7,13 +7,13 @@ import { Lock, Check } from "lucide-react";
 import { useState } from "react";
 import { ReservationModal } from "@/components/ui/reservation-modal";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export default function StudentReserve() {
   const { data: schedules, isLoading } = useSchedules();
   const [selectedSlot, setSelectedSlot] = useState<{ id: number; day: string; period: number } | null>(null);
-  const [filterDay, setFilterDay] = useState<string>("Monday");
+  const [filterDay, setFilterDay] = useState<string>("월요일");
 
   // Helper to find schedule for a specific slot
   const getSchedule = (day: string, period: number) => {
@@ -24,8 +24,8 @@ export default function StudentReserve() {
     <StudentLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold font-display text-primary">Reserve a Seat</h1>
-          <p className="text-muted-foreground text-sm">Select a time slot to book your study session.</p>
+          <h1 className="text-2xl font-bold font-display text-primary">좌석 예약하기</h1>
+          <p className="text-muted-foreground text-sm">원하는 시간대를 선택하여 예약하세요.</p>
         </div>
 
         {/* Day Filter */}
@@ -77,20 +77,20 @@ export default function StudentReserve() {
                   )}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="text-sm font-bold text-muted-foreground">Period {period}</span>
+                    <span className="text-sm font-bold text-muted-foreground">{period}교시</span>
                     {isReserved && <div className="bg-emerald-100 p-1 rounded-full"><Check className="w-3 h-3 text-emerald-600" /></div>}
                     {isFull && !isReserved && <Lock className="w-4 h-4 text-muted-foreground" />}
                   </div>
 
                   <div className="text-center">
                     {isReserved ? (
-                      <span className="text-emerald-700 font-bold text-sm">Reserved</span>
+                      <span className="text-emerald-700 font-bold text-sm">예약 완료</span>
                     ) : isFull ? (
-                      <span className="text-muted-foreground font-medium text-sm">Full</span>
+                      <span className="text-muted-foreground font-medium text-sm">만석</span>
                     ) : (
                       <div className="flex flex-col items-center">
                         <span className="text-2xl font-bold text-primary">{available}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Seats Left</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">남은 좌석</span>
                       </div>
                     )}
                   </div>

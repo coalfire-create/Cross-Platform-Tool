@@ -8,9 +8,9 @@ export function BottomNav() {
   const { logoutMutation } = useAuth();
 
   const navItems = [
-    { href: "/home", icon: Home, label: "Home" },
-    { href: "/reserve", icon: CalendarClock, label: "Reserve" },
-    { href: "/history", icon: History, label: "History" },
+    { href: "/home", icon: Home, label: "홈" },
+    { href: "/reserve", icon: CalendarClock, label: "예약" },
+    { href: "/history", icon: History, label: "기록" },
   ];
 
   return (
@@ -40,7 +40,7 @@ export function BottomNav() {
           className="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-xl text-muted-foreground hover:text-destructive transition-colors active:scale-95"
         >
           <LogOut className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-medium">Logout</span>
+          <span className="text-[10px] font-medium">로그아웃</span>
         </button>
       </div>
     </div>
@@ -55,27 +55,27 @@ export function DesktopNav() {
     <header className="hidden md:flex items-center justify-between px-8 py-4 bg-background border-b border-border sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold font-display text-xl">
-          S
+          L
         </div>
-        <h1 className="text-xl font-bold text-primary tracking-tight">StudySpace</h1>
+        <h1 className="text-xl font-bold text-primary tracking-tight">이강학웜</h1>
       </div>
 
       <nav className="flex items-center gap-6">
         <Link href="/home" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/home" ? "text-primary" : "text-muted-foreground")}>
-          Dashboard
+          대시보드
         </Link>
         <Link href="/reserve" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/reserve" ? "text-primary" : "text-muted-foreground")}>
-          Reserve
+          예약하기
         </Link>
         <Link href="/history" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/history" ? "text-primary" : "text-muted-foreground")}>
-          History
+          예약 내역
         </Link>
       </nav>
 
       <div className="flex items-center gap-4">
         <div className="text-sm text-right">
           <p className="font-medium text-foreground">{user?.name}</p>
-          <p className="text-xs text-muted-foreground">Student</p>
+          <p className="text-xs text-muted-foreground">{user?.role === 'teacher' ? '선생님' : '학생'}</p>
         </div>
         <button
           onClick={() => logoutMutation.mutate()}

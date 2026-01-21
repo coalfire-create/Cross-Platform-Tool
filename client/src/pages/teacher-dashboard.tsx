@@ -14,12 +14,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertAllowedStudentSchema } from "@shared/schema";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export default function TeacherDashboard() {
   const { allReservations } = useReservations();
-  const [filterDay, setFilterDay] = useState<string>("Monday");
+  const [filterDay, setFilterDay] = useState<string>("월요일");
   const [filterPeriod, setFilterPeriod] = useState<string>("1");
   const [search, setSearch] = useState("");
 
@@ -40,7 +40,7 @@ export default function TeacherDashboard() {
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search student..." 
+                  placeholder="학생 검색..." 
                   className="pl-9 w-full sm:w-64 rounded-xl border-gray-200" 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -50,7 +50,7 @@ export default function TeacherDashboard() {
              <div className="flex gap-2">
                <Select value={filterDay} onValueChange={setFilterDay}>
                  <SelectTrigger className="w-[140px] rounded-xl border-gray-200 bg-gray-50/50">
-                   <SelectValue placeholder="Day" />
+                   <SelectValue placeholder="요일" />
                  </SelectTrigger>
                  <SelectContent>
                    {DAYS.map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
@@ -61,11 +61,11 @@ export default function TeacherDashboard() {
                  <SelectTrigger className="w-[120px] rounded-xl border-gray-200 bg-gray-50/50">
                    <div className="flex items-center gap-2">
                      <Filter className="w-3 h-3 text-muted-foreground" />
-                     <SelectValue placeholder="Period" />
+                     <SelectValue placeholder="교시" />
                    </div>
                  </SelectTrigger>
                  <SelectContent>
-                   {PERIODS.map(p => <SelectItem key={p} value={p.toString()}>Period {p}</SelectItem>)}
+                   {PERIODS.map(p => <SelectItem key={p} value={p.toString()}>{p}교시</SelectItem>)}
                  </SelectContent>
                </Select>
              </div>
@@ -89,7 +89,7 @@ export default function TeacherDashboard() {
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
-                      Seat {res.seatNumber}
+                      좌석 {res.seatNumber}
                     </div>
                   </div>
                   <div className="p-4">
@@ -99,7 +99,7 @@ export default function TeacherDashboard() {
                         {res.day}
                       </span>
                       <span>•</span>
-                      <span>Period {res.period}</span>
+                      <span>{res.period}교시</span>
                     </div>
                   </div>
                 </CardContent>
@@ -110,7 +110,7 @@ export default function TeacherDashboard() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <Search className="w-8 h-8 text-gray-300" />
               </div>
-              <p>No reservations found for this slot.</p>
+              <p>해당 시간대에 예약된 학생이 없습니다.</p>
             </div>
           )}
         </div>
@@ -146,12 +146,12 @@ function AddStudentDialog() {
       <DialogTrigger asChild>
         <Button className="bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/20">
           <UserPlus className="w-4 h-4 mr-2" />
-          Add Student
+          학생 추가
         </Button>
       </DialogTrigger>
       <DialogContent className="rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Add Allowed Student</DialogTitle>
+          <DialogTitle>수강생 명단 추가</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -161,8 +161,8 @@ function AddStudentDialog() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                  <FormLabel>이름</FormLabel>
+                  <FormControl><Input placeholder="홍길동" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -172,7 +172,7 @@ function AddStudentDialog() {
               name="phoneNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
+                  <FormLabel>전화번호</FormLabel>
                   <FormControl><Input placeholder="010..." {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -183,7 +183,7 @@ function AddStudentDialog() {
               name="seatNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Seat Number</FormLabel>
+                  <FormLabel>좌석 번호</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
@@ -197,7 +197,7 @@ function AddStudentDialog() {
             />
             <DialogFooter>
               <Button type="submit" disabled={addStudentMutation.isPending}>
-                {addStudentMutation.isPending ? "Adding..." : "Add Student"}
+                {addStudentMutation.isPending ? "추가 중..." : "학생 추가"}
               </Button>
             </DialogFooter>
           </form>

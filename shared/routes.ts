@@ -17,6 +17,9 @@ export const errorSchemas = {
   }),
   conflict: z.object({
     message: z.string(),
+  }),
+  forbidden: z.object({
+    message: z.string(),
   })
 };
 

@@ -12,8 +12,8 @@ export default function StudentHistory() {
     <StudentLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold font-display text-primary">History</h1>
-          <p className="text-muted-foreground text-sm">Your past and upcoming reservations.</p>
+          <h1 className="text-2xl font-bold font-display text-primary">예약 내역</h1>
+          <p className="text-muted-foreground text-sm">지난 예약 및 예정된 예약 내역입니다.</p>
         </div>
 
         <div className="space-y-4">
@@ -33,7 +33,7 @@ export default function StudentHistory() {
                     <Calendar className="w-4 h-4 text-primary" />
                     <span className="font-bold text-foreground">{res.day}</span>
                   </div>
-                  <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">Confirmed</span>
+                  <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">예약 확정</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -42,8 +42,8 @@ export default function StudentHistory() {
                       {res.period}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">Period {res.period}</span>
-                      <span className="text-xs text-muted-foreground">Standard Session</span>
+                      <span className="text-sm font-medium">{res.period}교시</span>
+                      <span className="text-xs text-muted-foreground">정규 세션</span>
                     </div>
                   </div>
                   {res.photoUrl && (
@@ -59,13 +59,13 @@ export default function StudentHistory() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">No history yet</h3>
+              <h3 className="text-lg font-bold text-foreground mb-2">기록이 없습니다</h3>
               <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
-                You haven't made any reservations yet. Book your first session now!
+                아직 예약한 내역이 없습니다. 첫 예약을 시작해보세요!
               </p>
               <Link href="/reserve">
                 <Button className="rounded-xl bg-primary text-primary-foreground">
-                  Go to Reserve
+                  예약하러 가기
                 </Button>
               </Link>
             </div>

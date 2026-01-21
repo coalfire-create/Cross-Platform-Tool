@@ -20,11 +20,11 @@ export async function registerRoutes(
     try {
       const user = await storage.getUserByPhone(phoneNumber);
       if (!user) {
-        return done(null, false, { message: 'Incorrect phone number.' });
+        return done(null, false, { message: '등록되지 않은 전화번호입니다.' });
       }
       // In production, compare hashed password. For MVP/Lite, direct comparison.
       if (user.password !== password) {
-        return done(null, false, { message: 'Incorrect password.' });
+        return done(null, false, { message: '비밀번호가 일치하지 않습니다.' });
       }
       return done(null, user);
     } catch (err) {
@@ -75,13 +75,13 @@ export async function registerRoutes(
       // 1. Check if user already exists
       const existingUser = await storage.getUserByPhone(phoneNumber);
       if (existingUser) {
-        return res.status(409).json({ message: "User already exists" });
+        return res.status(409).json({ message: "이미 가입된 번호입니다." });
       }
 
       // 2. WHITELIST CHECK
       const allowedStudent = await storage.getAllowedStudent(phoneNumber);
       if (!allowedStudent) {
-        return res.status(403).json({ message: "Phone number not in allowed student list." });
+        return res.status(403).json({ message: "수강생 명단에 없는 번호입니다." });
       }
 
       // 3. Create User (Copying name/seat from allowed list)
@@ -94,7 +94,7 @@ export async function registerRoutes(
       });
       
       req.login(newUser, (err) => {
-        if (err) return res.status(500).json({ message: "Login failed after registration" });
+        if (err) return res.status(500).json({ message: "회원가입 후 로그인에 실패했습니다." });
         return res.status(201).json(newUser);
       });
 
@@ -102,7 +102,7 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
     }
   });
 
@@ -135,13 +135,13 @@ export async function registerRoutes(
       const count = await storage.getReservationCount(scheduleId);
       const schedule = await storage.getSchedule(scheduleId);
       if (!schedule || count >= schedule.capacity) {
-        return res.status(409).json({ message: "Class is full" });
+        return res.status(409).json({ message: "해당 시간대의 정원이 초과되었습니다." });
       }
 
       // Check duplicate
       const hasReserved = await storage.checkUserReserved(userId, scheduleId);
       if (hasReserved) {
-        return res.status(409).json({ message: "Already reserved this slot" });
+        return res.status(409).json({ message: "이미 해당 시간대를 예약하셨습니다." });
       }
 
       const reservation = await storage.createReservation({
@@ -154,7 +154,7 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(500).json({ message: "서버 오류가 발생했습니다." });
     }
   });
 
@@ -182,15 +182,15 @@ export async function registerRoutes(
   async function seed() {
     const students = await storage.getAllAllowedStudents();
     if (students.length === 0) {
-      console.log("Seeding database...");
+      console.log("초기 데이터를 생성 중입니다...");
       
       // 1. Whitelist
-      await storage.createAllowedStudent({ name: "John Doe", phoneNumber: "1234567890", seatNumber: 1 });
-      await storage.createAllowedStudent({ name: "Jane Smith", phoneNumber: "0987654321", seatNumber: 24 });
-      await storage.createAllowedStudent({ name: "Alice Kim", phoneNumber: "1112223333", seatNumber: 5 });
+      await storage.createAllowedStudent({ name: "홍길동", phoneNumber: "1234567890", seatNumber: 1 });
+      await storage.createAllowedStudent({ name: "김철수", phoneNumber: "0987654321", seatNumber: 24 });
+      await storage.createAllowedStudent({ name: "이영희", phoneNumber: "1112223333", seatNumber: 5 });
       
       // 2. Schedules (Mon-Fri, 3 Periods)
-      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      const days = ["월요일", "화요일", "수요일", "목요일", "금요일"];
       for (const day of days) {
         for (let i = 1; i <= 3; i++) {
           await storage.createSchedule({ dayOfWeek: day, periodNumber: i, capacity: 4 });
@@ -203,12 +203,12 @@ export async function registerRoutes(
       await storage.createUser({
         phoneNumber: "admin",
         password: "admin",
-        name: "Teacher Lee",
+        name: "이강학 선생님",
         seatNumber: 0,
         role: "teacher"
       });
       
-      console.log("Seeding complete.");
+      console.log("초기 데이터 생성 완료.");
     }
   }
 
