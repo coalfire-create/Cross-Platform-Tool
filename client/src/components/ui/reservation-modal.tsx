@@ -19,7 +19,6 @@ export function ReservationModal({ scheduleId, day, period, onClose }: Reservati
   const handleSimulatedUpload = () => {
     // Simulate photo upload by picking a random avatar or image
     // In a real app, this would be a file input -> upload endpoint
-    const randomId = Math.floor(Math.random() * 1000);
     const mockUrl = `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop`; // Generic avatar
     setPhotoUrl(mockUrl);
   };
@@ -37,10 +36,10 @@ export function ReservationModal({ scheduleId, day, period, onClose }: Reservati
     <Dialog open={!!scheduleId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md rounded-2xl gap-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-display text-primary">Confirm Reservation</DialogTitle>
+          <DialogTitle className="text-2xl font-display text-primary">예약 확인</DialogTitle>
           <DialogDescription>
-            You are reserving a seat for <span className="font-semibold text-foreground">{day}, Period {period}</span>.
-            Please upload a photo to confirm your identity.
+            <span className="font-semibold text-foreground">{day}, {period}교시</span> 좌석을 예약합니다.
+            본인 확인을 위해 사진을 업로드해주세요.
           </DialogDescription>
         </DialogHeader>
 
@@ -67,19 +66,19 @@ export function ReservationModal({ scheduleId, day, period, onClose }: Reservati
               <div className="p-3 bg-secondary rounded-full group-hover:scale-110 transition-transform">
                 <Camera className="w-6 h-6 text-primary" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">Take Photo</span>
+              <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">사진 찍기</span>
             </div>
           )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto rounded-xl">Cancel</Button>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto rounded-xl">취소</Button>
           <Button 
             onClick={handleConfirm} 
             disabled={!photoUrl || createReservationMutation.isPending}
             className="w-full sm:w-auto rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/20"
           >
-            {createReservationMutation.isPending ? "Confirming..." : "Complete Reservation"}
+            {createReservationMutation.isPending ? "처리 중..." : "예약 완료"}
           </Button>
         </DialogFooter>
       </DialogContent>
