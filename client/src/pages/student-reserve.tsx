@@ -77,6 +77,7 @@ export default function StudentReserve() {
                     <Card 
                       key={period}
                       onClick={() => {
+                        console.log("Slot clicked:", { schedule, isFull, isReserved, filterDay, period });
                         if (schedule && !isFull && !isReserved) {
                           setSelectedSlot({ id: schedule.id, day: filterDay, period, type: 'onsite' });
                         }
