@@ -201,8 +201,8 @@ export async function registerRoutes(
       // Or add to whitelist with a special logic. 
       // For MVP, let's create a teacher directly.
       await storage.createUser({
-        phoneNumber: "admin",
-        password: "admin",
+        phoneNumber: "7777",
+        password: "7777",
         name: "이강학 선생님",
         seatNumber: 0,
         role: "teacher"
