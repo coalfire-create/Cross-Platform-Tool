@@ -3,10 +3,11 @@ import { useSchedules } from "@/hooks/use-schedules";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Lock, Check, Globe, MapPin } from "lucide-react";
+import { ChevronLeft, Lock, Check, Globe, MapPin } from "lucide-react";
 import { useState } from "react";
 import { ReservationModal } from "@/components/ui/reservation-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLocation } from "wouter";
 
 const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일"];
 const PERIODS = [1, 2, 3, 4, 5, 6, 7];
@@ -15,6 +16,7 @@ export default function StudentReserve() {
   const { data: schedules, isLoading } = useSchedules();
   const [selectedSlot, setSelectedSlot] = useState<{ id: number | null; day: string; period: number | null; type: 'onsite' | 'online' } | null>(null);
   const [filterDay, setFilterDay] = useState<string>("월요일");
+  const [, setLocation] = useLocation();
 
   // Helper to find schedule for a specific slot
   const getSchedule = (day: string, period: number) => {
@@ -24,9 +26,19 @@ export default function StudentReserve() {
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold font-display text-primary">질문하기</h1>
-          <p className="text-muted-foreground text-sm">현장 질문 또는 온라인 질문을 선택하세요.</p>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setLocation("/")}
+            className="rounded-full hover:bg-primary/5"
+          >
+            <ChevronLeft className="w-6 h-6 text-primary" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold font-display text-primary">질문하기</h1>
+            <p className="text-muted-foreground text-sm">현장 질문 또는 온라인 질문을 선택하세요.</p>
+          </div>
         </div>
 
         <Tabs defaultValue="onsite" className="w-full">

@@ -37,7 +37,7 @@ export default function AuthPage() {
             <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
               <GraduationCap className="w-8 h-8" />
             </div>
-            <span className="text-2xl font-bold font-display tracking-tight">이강학웜</span>
+            <span className="text-2xl font-bold font-display tracking-tight">이강학원</span>
           </div>
           <h1 className="text-5xl font-display font-bold leading-tight mb-6">
             성장을 위한 <br /> 당신만의 <span className="text-accent">공간</span>.

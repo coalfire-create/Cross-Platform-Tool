@@ -21,7 +21,7 @@ export default function StudentHome() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold font-display text-primary">
-              안녕하세요, {user?.name.split(" ")[0]}님! 👋
+              안녕하세요, {user?.name.split(" ")[0]}님! 👋 <br/>이강학원에 오신걸 환영합니다
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               오늘도 성장을 위해 달려볼까요?
