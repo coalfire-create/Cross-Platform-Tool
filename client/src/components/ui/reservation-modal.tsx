@@ -15,6 +15,8 @@ interface ReservationModalProps {
 }
 
 export function ReservationModal({ scheduleId, day, period, type, onClose }: ReservationModalProps) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [content, setContent] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const { createReservationMutation } = useReservations();
 
