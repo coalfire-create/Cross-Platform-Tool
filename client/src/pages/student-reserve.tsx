@@ -104,7 +104,7 @@ export default function StudentReserve() {
                         ) : (
                           <div className="flex flex-col items-center">
                             <span className="text-2xl font-bold text-primary">{available}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">남은 좌석</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">남은 자리</span>
                           </div>
                         )}
                       </div>

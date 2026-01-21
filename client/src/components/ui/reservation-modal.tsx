@@ -1,9 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, Upload, X, FileText } from "lucide-react";
 import { useState } from "react";
 import { useReservations } from "@/hooks/use-reservations";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ReservationModalProps {
   scheduleId: number | null;
@@ -15,6 +16,7 @@ interface ReservationModalProps {
 
 export function ReservationModal({ scheduleId, day, period, type, onClose }: ReservationModalProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [content, setContent] = useState("");
   const { createReservationMutation } = useReservations();
 
   const handleSimulatedUpload = () => {
@@ -26,7 +28,7 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
   const handleConfirm = () => {
     if (photoUrl) {
       createReservationMutation.mutate(
-        { scheduleId: scheduleId || undefined, type, photoUrl },
+        { scheduleId: scheduleId || undefined, type, content, photoUrl },
         { onSuccess: onClose }
       );
     }
@@ -47,32 +49,47 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center justify-center gap-4 py-4">
-          {photoUrl ? (
-            <div className="relative group">
-              <img 
-                src={photoUrl} 
-                alt="Verification" 
-                className="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-xl"
-              />
-              <button 
-                onClick={() => setPhotoUrl(null)}
-                className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-1.5 shadow-sm hover:scale-110 transition-transform"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <FileText className="w-4 h-4 text-primary" />
+              질문 내용 (선택)
             </div>
-          ) : (
-            <div 
-              onClick={handleSimulatedUpload}
-              className="w-32 h-32 rounded-full border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group"
-            >
-              <div className="p-3 bg-secondary rounded-full group-hover:scale-110 transition-transform">
-                <Camera className="w-6 h-6 text-primary" />
+            <Textarea 
+              placeholder="질문하고 싶은 내용을 간단히 적어주세요."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="resize-none rounded-xl border-border focus-visible:ring-primary h-24"
+            />
+          </div>
+
+          <div className="flex flex-col items-center justify-center gap-4">
+            {photoUrl ? (
+              <div className="relative group">
+                <img 
+                  src={photoUrl} 
+                  alt="Verification" 
+                  className="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-xl"
+                />
+                <button 
+                  onClick={() => setPhotoUrl(null)}
+                  className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-1.5 shadow-sm hover:scale-110 transition-transform"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">사진 찍기</span>
-            </div>
-          )}
+            ) : (
+              <div 
+                onClick={handleSimulatedUpload}
+                className="w-full h-32 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all group"
+              >
+                <div className="p-3 bg-secondary rounded-full group-hover:scale-110 transition-transform">
+                  <Camera className="w-6 h-6 text-primary" />
+                </div>
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">질문 사진 업로드</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">

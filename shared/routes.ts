@@ -85,6 +85,7 @@ export const api = {
       input: z.object({
         scheduleId: z.number().optional(),
         type: z.enum(['onsite', 'online']),
+        content: z.string().optional(),
         photoUrl: z.string(),
       }),
       responses: {

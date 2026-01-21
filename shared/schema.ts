@@ -34,6 +34,7 @@ export const reservations = pgTable("reservations", {
   userId: integer("user_id").notNull(), 
   scheduleId: integer("schedule_id"), // 현장 질문의 경우 필수
   type: text("type").notNull(), // 'onsite' or 'online'
+  content: text("content"), // 질문 내용 필드 추가
   photoUrl: text("photo_url").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
