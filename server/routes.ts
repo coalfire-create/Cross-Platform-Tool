@@ -18,7 +18,8 @@ export async function registerRoutes(
     passwordField: 'password'
   }, async (phoneNumber, password, done) => {
     try {
-      const user = await storage.getUserByPhone(phoneNumber);
+      const cleanPhone = phoneNumber.replace(/-/g, '');
+      const user = await storage.getUserByPhone(cleanPhone);
       if (!user) {
         return done(null, false, { message: '등록되지 않은 전화번호입니다.' });
       }
@@ -71,22 +72,23 @@ export async function registerRoutes(
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
+      const cleanPhone = phoneNumber.replace(/-/g, '');
 
       // 1. Check if user already exists
-      const existingUser = await storage.getUserByPhone(phoneNumber);
+      const existingUser = await storage.getUserByPhone(cleanPhone);
       if (existingUser) {
         return res.status(409).json({ message: "이미 가입된 번호입니다." });
       }
 
       // 2. WHITELIST CHECK
-      const allowedStudent = await storage.getAllowedStudent(phoneNumber);
+      const allowedStudent = await storage.getAllowedStudent(cleanPhone);
       if (!allowedStudent) {
         return res.status(403).json({ message: "수강생 명단에 없는 번호입니다." });
       }
 
       // 3. Create User (Copying name/seat from allowed list)
       const newUser = await storage.createUser({
-        phoneNumber,
+        phoneNumber: cleanPhone,
         password, // Should hash in prod
         name: allowedStudent.name,
         seatNumber: allowedStudent.seatNumber,
