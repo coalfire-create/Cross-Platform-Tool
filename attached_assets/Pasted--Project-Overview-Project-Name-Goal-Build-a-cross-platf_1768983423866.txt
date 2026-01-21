@@ -1,0 +1,60 @@
+# Project Overview
+- **Project Name:** 이강학웜
+- **Goal:** Build a cross-platform mobile app (iOS & Android) using **React Native (Expo)**.
+- **Target Audience:** Students (Users) and Teachers (Admins).
+
+# Tech Stack
+1. **Frontend:** React Native (Expo)
+2. **Backend:** **Supabase** (Database, Auth, Storage)
+
+# ★ Core Feature: Whitelist & Seat Number Integration
+To ensure security and identity verification, implement a **strict whitelist system** based on pre-uploaded academy data.
+
+1. **Pre-filled Data:** There will be a table named `allowed_students` containing `name`, `phone_number`, and `seat_number`.
+2. **Signup Logic:**
+   - When a user tries to sign up with a phone number, the system checks if the number exists in `allowed_students`.
+   - **If exists:** Allow the user to set a password and create an account.
+   - **Crucial Step:** During account creation, automatically fetch the `seat_number` and `name` from `allowed_students` and save them into the user's `profiles` table.
+   - **If not exists:** Block registration with an error message.
+
+# detailed Features
+
+## 1. Authentication (Phone + Password)
+- **Login:** Users log in using their **Phone Number** and **Password**.
+- **User Identity:** The app must always identify students by their **[Seat Number] + [Name]** (e.g., "Seat 24 - John Doe").
+
+## 2. Reservation System (The Main Feature)
+- **Schedule:** Monday to Friday, divided by class periods.
+- **Capacity:** Max **4 students** per period.
+- **Logic:**
+  - Use **Supabase Realtime** to update slot availability instantly.
+  - If a slot reaches 4 users, the button becomes disabled.
+
+## 3. Student Features
+- **Reserve a Question:**
+  1. Select Day & Period.
+  2. **Upload Photo (Mandatory):** Take a photo of the question or select from the gallery. Upload to **Supabase Storage**.
+  3. Confirm Reservation.
+- **My History:** View a list of past reservations and uploaded question photos.
+
+## 4. Teacher Features (Admin Dashboard)
+- **Dashboard:** Select a Day/Period to view reserved students.
+- **UI Requirement:**
+  - Display the reserved students in a list or grid.
+  - **Emphasis:** The **[Seat Number]** must be visually prominent (e.g., a large badge or bold text) so the teacher can locate the student immediately.
+  - Show the uploaded question photo preview.
+
+# Database Schema (Supabase)
+1. `allowed_students` (Whitelist Table)
+   - id, name, phone_number, **seat_number** (Fixed desk number)
+2. `profiles` (User Data)
+   - id (uuid, references auth.users), name, phone_number, **seat_number**, role ('student' or 'teacher')
+3. `schedules`
+   - id, day_of_week, period_number, current_count (int)
+4. `questions`
+   - id, user_id (fk to profiles), schedule_id (fk to schedules), photo_url (string), created_at
+
+# Design Guidelines
+- **Theme:** Navy and Blue colors to represent trust and education.
+- **UI/UX:** Clean and intuitive.
+- **Identity:** Always display the **Seat Number** next to the student's name in the UI.
