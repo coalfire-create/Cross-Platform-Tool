@@ -108,7 +108,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReservationCount(scheduleId: number): Promise<number> {
-    const [result] = await db.select({ count: count() }).from(reservations).where(eq(reservations.scheduleId, scheduleId));
+    const [result] = await db.select({ count: count() }).from(reservations).where(and(eq(reservations.scheduleId, scheduleId), eq(reservations.type, 'onsite')));
+    return result.count;
+  }
+
+  async getDailyOnsiteCount(userId: number, date: Date): Promise<number> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const [result] = await db.select({ count: count() })
+      .from(reservations)
+      .where(and(
+        eq(reservations.userId, userId),
+        eq(reservations.type, 'onsite'),
+        sql`${reservations.createdAt} >= ${startOfDay} AND ${reservations.createdAt} <= ${endOfDay}`
+      ));
     return result.count;
   }
 

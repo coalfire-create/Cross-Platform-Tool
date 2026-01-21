@@ -83,13 +83,15 @@ export const api = {
       method: 'POST' as const,
       path: '/api/reservations',
       input: z.object({
-        scheduleId: z.number(),
+        scheduleId: z.number().optional(),
+        type: z.enum(['onsite', 'online']),
         photoUrl: z.string(),
       }),
       responses: {
         201: z.custom<typeof reservations.$inferSelect>(),
         400: errorSchemas.validation,
         409: errorSchemas.conflict,
+        403: errorSchemas.forbidden,
       },
     },
     list: {

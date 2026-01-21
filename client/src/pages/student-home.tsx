@@ -39,13 +39,13 @@ export default function StudentHome() {
           </div>
           
           <div className="relative z-10">
-            <h2 className="text-lg font-medium opacity-90 mb-1">다음 수업 일정</h2>
+            <h2 className="text-lg font-medium opacity-90 mb-1">다음 질문 일정</h2>
             {nextReservation ? (
               <div className="mt-4">
                 <div className="text-3xl font-bold font-display mb-2">{nextReservation.day}</div>
                 <div className="flex items-center gap-2 text-primary-foreground/80 mb-6">
                   <Clock className="w-4 h-4" />
-                  <span>{nextReservation.period}교시</span>
+                  <span>{nextReservation.type === 'onsite' ? `${nextReservation.period}교시 (현장)` : '온라인 질문'}</span>
                 </div>
                 <Button variant="secondary" className="w-full sm:w-auto rounded-xl font-semibold text-primary">
                   상세 보기
@@ -53,10 +53,10 @@ export default function StudentHome() {
               </div>
             ) : (
               <div className="mt-4">
-                <div className="text-2xl font-bold font-display mb-4">예정된 수업이 없습니다</div>
+                <div className="text-2xl font-bold font-display mb-4">예정된 질문이 없습니다</div>
                 <Link href="/reserve">
                   <Button variant="secondary" className="w-full sm:w-auto rounded-xl font-semibold text-primary group">
-                    좌석 예약하기
+                    질문하기
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>

@@ -130,25 +130,36 @@ export async function registerRoutes(
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const { scheduleId, photoUrl } = api.reservations.create.input.parse(req.body);
+      const { scheduleId, type, photoUrl } = api.reservations.create.input.parse(req.body);
       const userId = (req.user as any).id;
 
-      // Check capacity
-      const count = await storage.getReservationCount(scheduleId);
-      const schedule = await storage.getSchedule(scheduleId);
-      if (!schedule || count >= schedule.capacity) {
-        return res.status(409).json({ message: "해당 시간대의 정원이 초과되었습니다." });
-      }
+      if (type === 'onsite') {
+        if (!scheduleId) return res.status(400).json({ message: "현장 질문은 교시 선택이 필수입니다." });
 
-      // Check duplicate
-      const hasReserved = await storage.checkUserReserved(userId, scheduleId);
-      if (hasReserved) {
-        return res.status(409).json({ message: "이미 해당 시간대를 예약하셨습니다." });
+        // 일일 3회 제한 체크
+        const dailyCount = await storage.getDailyOnsiteCount(userId, new Date());
+        if (dailyCount >= 3) {
+          return res.status(403).json({ message: "현장 질문은 하루에 최대 3회까지만 가능합니다." });
+        }
+
+        // 정원 체크
+        const count = await storage.getReservationCount(scheduleId);
+        const schedule = await storage.getSchedule(scheduleId);
+        if (!schedule || count >= schedule.capacity) {
+          return res.status(409).json({ message: "해당 시간대의 정원이 초과되었습니다." });
+        }
+
+        // 중복 체크
+        const hasReserved = await storage.checkUserReserved(userId, scheduleId);
+        if (hasReserved) {
+          return res.status(409).json({ message: "이미 해당 시간대를 예약하셨습니다." });
+        }
       }
 
       const reservation = await storage.createReservation({
         userId,
-        scheduleId,
+        scheduleId: type === 'onsite' ? scheduleId : null,
+        type,
         photoUrl
       });
       res.status(201).json(reservation);
@@ -191,10 +202,10 @@ export async function registerRoutes(
       await storage.createAllowedStudent({ name: "김철수", phoneNumber: "0987654321", seatNumber: 24 });
       await storage.createAllowedStudent({ name: "이영희", phoneNumber: "1112223333", seatNumber: 5 });
       
-      // 2. Schedules (Mon-Fri, 3 Periods)
+      // 2. Schedules (Mon-Fri, 7 Periods)
       const days = ["월요일", "화요일", "수요일", "목요일", "금요일"];
       for (const day of days) {
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 7; i++) {
           await storage.createSchedule({ dayOfWeek: day, periodNumber: i, capacity: 4 });
         }
       }

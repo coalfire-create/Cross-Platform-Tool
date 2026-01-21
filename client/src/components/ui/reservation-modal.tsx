@@ -9,37 +9,41 @@ interface ReservationModalProps {
   scheduleId: number | null;
   day: string;
   period: number;
+  type: 'onsite' | 'online';
   onClose: () => void;
 }
 
-export function ReservationModal({ scheduleId, day, period, onClose }: ReservationModalProps) {
+export function ReservationModal({ scheduleId, day, period, type, onClose }: ReservationModalProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const { createReservationMutation } = useReservations();
 
   const handleSimulatedUpload = () => {
     // Simulate photo upload by picking a random avatar or image
-    // In a real app, this would be a file input -> upload endpoint
-    const mockUrl = `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop`; // Generic avatar
+    const mockUrl = `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop`;
     setPhotoUrl(mockUrl);
   };
 
   const handleConfirm = () => {
-    if (scheduleId && photoUrl) {
+    if (photoUrl) {
       createReservationMutation.mutate(
-        { scheduleId, photoUrl },
+        { scheduleId: scheduleId || undefined, type, photoUrl },
         { onSuccess: onClose }
       );
     }
   };
 
   return (
-    <Dialog open={!!scheduleId} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md rounded-2xl gap-6">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-display text-primary">예약 확인</DialogTitle>
+          <DialogTitle className="text-2xl font-display text-primary">질문 확인</DialogTitle>
           <DialogDescription>
-            <span className="font-semibold text-foreground">{day}, {period}교시</span> 좌석을 예약합니다.
-            본인 확인을 위해 사진을 업로드해주세요.
+            {type === 'onsite' ? (
+              <><span className="font-semibold text-foreground">{day}, {period}교시 (현장)</span> 질문을 예약합니다.</>
+            ) : (
+              <><span className="font-semibold text-foreground">온라인 질문</span>을 등록합니다.</>
+            )}
+            <br />본인 확인 및 질문 확인을 위해 사진을 업로드해주세요.
           </DialogDescription>
         </DialogHeader>
 

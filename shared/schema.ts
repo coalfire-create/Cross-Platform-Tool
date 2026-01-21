@@ -24,15 +24,16 @@ export const users = pgTable("users", {
 
 export const schedules = pgTable("schedules", {
   id: serial("id").primaryKey(),
-  dayOfWeek: text("day_of_week").notNull(), // Monday, Tuesday, etc.
+  dayOfWeek: text("day_of_week").notNull(), // 월요일, 화요일, 등
   periodNumber: integer("period_number").notNull(),
   capacity: integer("capacity").default(4).notNull(),
 });
 
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(), // Foreign key handled in logic
-  scheduleId: integer("schedule_id").notNull(), // Foreign key handled in logic
+  userId: integer("user_id").notNull(), 
+  scheduleId: integer("schedule_id"), // 현장 질문의 경우 필수
+  type: text("type").notNull(), // 'onsite' or 'online'
   photoUrl: text("photo_url").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
