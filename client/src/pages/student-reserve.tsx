@@ -20,7 +20,11 @@ export default function StudentReserve() {
 
   // Helper to find schedule for a specific slot
   const getSchedule = (day: string, period: number) => {
-    return schedules?.find(s => s.dayOfWeek === day && s.periodNumber === period);
+    const found = schedules?.find(s => s.dayOfWeek === day && s.periodNumber === period);
+    if (!found && schedules && schedules.length > 0) {
+      console.warn(`Schedule not found for ${day} ${period}교시`);
+    }
+    return found;
   };
 
   return (

@@ -191,7 +191,11 @@ export class DatabaseStorage implements IStorage {
   async checkUserReserved(userId: number, scheduleId: number): Promise<boolean> {
     const [existing] = await db.select()
       .from(reservations)
-      .where(and(eq(reservations.userId, userId), eq(reservations.scheduleId, scheduleId)));
+      .where(and(
+        eq(reservations.userId, userId), 
+        eq(reservations.scheduleId, scheduleId),
+        eq(reservations.type, 'onsite')
+      ));
     return !!existing;
   }
 }

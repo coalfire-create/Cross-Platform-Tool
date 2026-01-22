@@ -70,10 +70,30 @@ export async function registerRoutes(
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    cookie: {
+      secure: false,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: 'lax'
+    }
   }));
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Fix: Explicitly allow credentials and set CORS-like headers for session persistence
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
+  });
+
+  // Log authentication status for all API calls
+  app.use("/api", (req, res, next) => {
+    if (req.path !== "/login" && req.path !== "/register" && !req.isAuthenticated()) {
+      console.log(`Unauthorized API access attempt: ${req.method} ${req.path}`);
+    }
+    next();
+  });
 
   // === FILE UPLOAD ===
   app.post("/api/upload", upload.single("file"), (req, res) => {
@@ -215,12 +235,6 @@ export async function registerRoutes(
 
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    // In a real app, check if role === 'teacher'
-    // For now assuming dashboard is protected or visible
-    if ((req.user as any).role !== 'teacher') {
-       // Optionally restrict, but for MVP maybe allow visibility or return 403
-       // Let's restrict to teacher for "list all"
-    }
     const all = await storage.getReservationsForTeacher();
     res.json(all);
   });

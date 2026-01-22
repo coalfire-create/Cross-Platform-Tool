@@ -48,9 +48,30 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
 
   const handleConfirm = () => {
     if (photoUrl) {
+      const payload = { 
+        scheduleId: scheduleId ? Number(scheduleId) : undefined, 
+        type, 
+        content: content.trim() || undefined, 
+        photoUrl 
+      };
+      console.log("Submitting reservation:", payload);
       createReservationMutation.mutate(
-        { scheduleId: scheduleId || undefined, type, content, photoUrl },
-        { onSuccess: onClose }
+        payload,
+        { 
+          onSuccess: () => {
+            console.log("Reservation successful");
+            onClose();
+          },
+          onError: (error: any) => {
+            console.error("Reservation error details:", error);
+            if (error.message?.includes("401")) {
+              alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+              window.location.href = "/";
+            } else {
+              alert(`예약 실패: ${error.message || "알 수 없는 오류"}`);
+            }
+          }
+        }
       );
     }
   };
