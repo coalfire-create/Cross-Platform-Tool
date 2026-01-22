@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useReservations } from "@/hooks/use-reservations";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { queryClient } from "@/lib/queryClient";
 
 interface ReservationModalProps {
   scheduleId: number | null;
@@ -48,12 +49,17 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
 
   const handleConfirm = () => {
     if (photoUrl) {
-      const payload = { 
-        scheduleId: scheduleId ? Number(scheduleId) : undefined, 
+      const payload: any = { 
         type, 
         content: content.trim() || undefined, 
         photoUrl 
       };
+      
+      // Only include scheduleId if it's onsite and we have an ID
+      if (type === 'onsite' && scheduleId) {
+        payload.scheduleId = Number(scheduleId);
+      }
+      
       console.log("Submitting reservation:", payload);
       createReservationMutation.mutate(
         payload,

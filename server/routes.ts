@@ -70,12 +70,9 @@ export async function registerRoutes(
     resave: true,
     saveUninitialized: true,
     store: storage.sessionStore,
-    rolling: true,
     cookie: {
-      secure: false,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: 'lax'
+      secure: false, // development environment
+      maxAge: 30 * 24 * 60 * 60 * 1000, 
     }
   }));
 
@@ -97,7 +94,7 @@ export async function registerRoutes(
   });
 
   // === FILE UPLOAD ===
-  app.post("/api/upload", upload.single("file"), (req, res) => {
+  app.post("/api/upload", upload.single("file"), (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
     const url = `/uploads/${req.file.filename}`;
     res.json({ url });
@@ -215,7 +212,7 @@ export async function registerRoutes(
 
       const reservation = await storage.createReservation({
         userId,
-        scheduleId: type === 'onsite' ? scheduleId : null,
+        scheduleId: (type === 'onsite' && scheduleId) ? scheduleId : null,
         type,
         photoUrl
       });
