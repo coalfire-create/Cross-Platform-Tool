@@ -36,6 +36,8 @@ export const reservations = pgTable("reservations", {
   type: text("type").notNull(), // 'onsite' or 'online'
   content: text("content"), // 질문 내용 필드 추가
   photoUrl: text("photo_url").notNull(),
+  teacherFeedback: text("teacher_feedback"), // 선생님 답변 추가
+  status: text("status").default("pending").notNull(), // 'pending', 'confirmed', 'answered'
   createdAt: timestamp("created_at").defaultNow(),
 });
 

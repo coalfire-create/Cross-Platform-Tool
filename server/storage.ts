@@ -10,9 +10,9 @@ import {
   type Schedule,
   type Reservation,
   type ScheduleWithCount,
-  type ReservationWithDetails
+  type ReservationWithDetails,
 } from "@shared/schema";
-import { eq, and, count, desc } from "drizzle-orm";
+import { eq, and, count, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -41,6 +41,7 @@ export interface IStorage {
   createReservation(reservation: Omit<Reservation, "id" | "createdAt">): Promise<Reservation>;
   getUserReservations(userId: number): Promise<ReservationWithDetails[]>;
   getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]>;
+  updateReservation(id: number, update: Partial<Reservation>): Promise<Reservation>;
   checkUserReserved(userId: number, scheduleId: number): Promise<boolean>;
 
   sessionStore: session.Store;
@@ -143,16 +144,25 @@ export class DatabaseStorage implements IStorage {
       studentName: users.name,
       seatNumber: users.seatNumber,
       day: schedules.dayOfWeek,
-      period: schedules.periodNumber
+      period: schedules.periodNumber,
+      teacherFeedback: reservations.teacherFeedback,
+      status: reservations.status,
+      content: reservations.content,
+      type: reservations.type
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .innerJoin(schedules, eq(reservations.scheduleId, schedules.id))
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
     .where(eq(reservations.userId, userId))
     .orderBy(desc(reservations.createdAt));
 
     // Cast seatNumber to number to match type (it might be null in DB but strictly typed in join)
-    return result.map(r => ({ ...r, seatNumber: r.seatNumber || 0 }));
+    return result.map(r => ({ 
+      ...r, 
+      seatNumber: r.seatNumber || 0,
+      day: r.day || "온라인",
+      period: r.period || 0
+    }));
   }
 
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
@@ -165,27 +175,44 @@ export class DatabaseStorage implements IStorage {
       studentName: users.name,
       seatNumber: users.seatNumber,
       day: schedules.dayOfWeek,
-      period: schedules.periodNumber
+      period: schedules.periodNumber,
+      teacherFeedback: reservations.teacherFeedback,
+      status: reservations.status,
+      content: reservations.content,
+      type: reservations.type
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .innerJoin(schedules, eq(reservations.scheduleId, schedules.id));
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id));
 
-    if (day && period) {
-      // Filter by day/period logic would go here if we were filtering inside the query builder
-      // But for simplicity/time we can fetch and filter or build dynamic query
-      // Let's rely on frontend filtering or precise query if needed.
-      // For now returning all for dashboard to filter, or simple filtering:
-    }
-    
     const result = await query;
     const filtered = result.filter(r => {
-      if (day && r.day !== day) return false;
-      if (period && r.period !== period) return false;
+      if (r.type === 'onsite') {
+        if (day && r.day !== day) return false;
+        if (period && r.period !== period) return false;
+      } else if (day || period) {
+        // Online questions only show up when no specific day/period filter is active
+        // or we could decide to show them in a special "Online" view
+        return false; 
+      }
       return true;
     });
 
-    return filtered.map(r => ({ ...r, seatNumber: r.seatNumber || 0 }));
+    return filtered.map(r => ({ 
+      ...r, 
+      seatNumber: r.seatNumber || 0,
+      day: r.day || "온라인",
+      period: r.period || 0
+    }));
+  }
+
+  async updateReservation(id: number, update: Partial<Reservation>): Promise<Reservation> {
+    const [updated] = await db.update(reservations)
+      .set(update)
+      .where(eq(reservations.id, id))
+      .returning();
+    if (!updated) throw new Error("Reservation not found");
+    return updated;
   }
 
   async checkUserReserved(userId: number, scheduleId: number): Promise<boolean> {

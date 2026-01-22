@@ -225,7 +225,10 @@ export async function registerRoutes(
         userId,
         scheduleId: (type === 'onsite' && scheduleId) ? scheduleId : null,
         type,
-        photoUrl
+        photoUrl,
+        content: req.body.content || null,
+        status: 'pending',
+        teacherFeedback: null,
       });
       res.status(201).json(reservation);
     } catch (err) {
@@ -246,6 +249,18 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     const all = await storage.getReservationsForTeacher();
     res.json(all);
+  });
+
+  app.patch("/api/reservations/:id", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.sendStatus(401);
+    try {
+      const id = parseInt(req.params.id);
+      const { status, teacherFeedback } = req.body;
+      const updated = await storage.updateReservation(id, { status, teacherFeedback });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "업데이트 실패" });
+    }
   });
 
   // === ADMIN / SEEDING ===
