@@ -60,6 +60,8 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
         { 
           onSuccess: () => {
             console.log("Reservation successful");
+            queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/reservations/history"] });
             onClose();
           },
           onError: (error: any) => {
