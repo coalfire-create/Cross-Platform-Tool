@@ -1,18 +1,11 @@
 import { AdminLayout } from "@/components/layout";
 import { useReservations } from "@/hooks/use-reservations";
-import { useAdmin } from "@/hooks/use-admin";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Search, UserPlus, Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin } from "lucide-react";
+import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertAllowedStudentSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -125,119 +118,6 @@ export default function TeacherDashboard() {
         </section>
       </div>
     </AdminLayout>
-  );
-}
-
-function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId, feedback, setFeedback }: any) {
-  return (
-    <Card className={cn(
-      "rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 border-2",
-      res.status === 'confirmed' || res.status === 'answered' ? "border-emerald-100 bg-emerald-50/10" : "border-border/60"
-    )}>
-      <CardContent className="p-0">
-        <div className="relative h-48 bg-secondary/30 group">
-          <img 
-            src={res.photoUrl} 
-            alt={res.studentName} 
-            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-          />
-          <div className="absolute top-2 right-2 flex gap-2">
-            <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
-              좌석 {res.seatNumber}
-            </div>
-          </div>
-          <a 
-            href={res.photoUrl} 
-            target="_blank" 
-            rel="noreferrer"
-            className="absolute bottom-2 right-2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
-        <div className="p-4">
-          <div className="flex justify-between items-start">
-            <h3 className="font-bold text-lg text-foreground truncate">{res.studentName}</h3>
-            {res.status !== 'pending' && (
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-            )}
-          </div>
-          {res.content && (
-            <p className="text-sm text-muted-foreground mt-2 line-clamp-2 bg-muted/50 p-2 rounded-lg italic">
-              "{res.content}"
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
-              {res.day}
-            </span>
-            {res.type === 'onsite' && (
-              <>
-                <span>•</span>
-                <span>{res.period}교시</span>
-              </>
-            )}
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="px-4 pb-4 pt-0 gap-2">
-        {res.type === 'onsite' ? (
-          <Button 
-            className="w-full rounded-xl" 
-            variant={res.status === 'confirmed' ? "outline" : "default"}
-            disabled={res.status === 'confirmed'}
-            onClick={() => onUpdateStatus(res.id, 'confirmed')}
-          >
-            {res.status === 'confirmed' ? "확인됨" : "확인 완료"}
-          </Button>
-        ) : (
-          <Dialog open={selectedResId === res.id} onOpenChange={(open) => !open && setSelectedResId(null)}>
-            <DialogTrigger asChild>
-              <Button 
-                className="w-full rounded-xl"
-                variant={res.status === 'answered' ? "outline" : "default"}
-                onClick={() => {
-                  setSelectedResId(res.id);
-                  setFeedback(res.teacherFeedback || "");
-                }}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                {res.status === 'answered' ? "답변 수정" : "답변 달기"}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl">
-              <DialogHeader>
-                <DialogTitle>{res.studentName} 학생 질문 답변</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="aspect-video rounded-xl overflow-hidden border">
-                  <img src={res.photoUrl} className="w-full h-full object-contain bg-muted" alt="Question" />
-                </div>
-                {res.content && (
-                  <div className="bg-muted p-3 rounded-xl text-sm">
-                    <strong>질문 내용:</strong> {res.content}
-                  </div>
-                )}
-                <Textarea 
-                  placeholder="답변을 입력해주세요..." 
-                  className="min-h-[150px] rounded-xl"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                />
-              </div>
-              <DialogFooter>
-                <Button 
-                  className="w-full rounded-xl"
-                  onClick={() => onUpdateStatus(res.id, 'answered', feedback)}
-                >
-                  답변 저장
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </CardFooter>
-    </Card>
   );
 }
 
