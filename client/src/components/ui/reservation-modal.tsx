@@ -73,8 +73,9 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
           onError: (error: any) => {
             console.error("Reservation error details:", error);
             if (error.message?.includes("401")) {
-              alert("세션이 만료되었습니다. 다시 로그인해주세요.");
-              window.location.href = "/";
+              alert("세션이 만료되어 자동으로 다시 로그인합니다.");
+              // For development, try to re-login with stored credentials or just refresh
+              window.location.reload();
             } else {
               alert(`예약 실패: ${error.message || "알 수 없는 오류"}`);
             }

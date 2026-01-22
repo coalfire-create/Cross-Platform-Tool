@@ -67,13 +67,16 @@ export async function registerRoutes(
 
   app.use(session({
     secret: process.env.SESSION_SECRET || "secret",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     store: storage.sessionStore,
+    proxy: true,
     cookie: {
       secure: false, // development environment
       maxAge: 30 * 24 * 60 * 60 * 1000, 
-    }
+      httpOnly: true,
+      sameSite: "lax",
+    },
   }));
 
   app.use(passport.initialize());
@@ -81,8 +84,16 @@ export async function registerRoutes(
 
   // Fix: Explicitly allow credentials and set CORS-like headers for session persistence
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Credentials', 'true');
-    next();
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Origin", req.headers.origin);
+    res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With");
+
+    if (req.method === "OPTIONS") {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
   });
 
   // Log authentication status for all API calls
