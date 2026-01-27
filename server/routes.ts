@@ -67,12 +67,12 @@ export async function registerRoutes(
 
   app.use(session({
     secret: process.env.SESSION_SECRET || "secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: storage.sessionStore,
     proxy: true,
     cookie: {
-      secure: false, // development environment
+      secure: false,
       maxAge: 30 * 24 * 60 * 60 * 1000, 
       httpOnly: true,
       sameSite: "lax",
