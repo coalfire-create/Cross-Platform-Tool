@@ -195,8 +195,10 @@ export async function registerRoutes(
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
+      console.log("Reservation request body:", req.body);
       const { scheduleId, type, photoUrl } = api.reservations.create.input.parse(req.body);
       const userId = (req.user as any).id;
+      console.log("Parsed reservation:", { scheduleId, type, photoUrl, userId });
 
       if (type === 'onsite') {
         if (!scheduleId) return res.status(400).json({ message: "현장 질문은 교시 선택이 필수입니다." });
@@ -232,6 +234,7 @@ export async function registerRoutes(
       });
       res.status(201).json(reservation);
     } catch (err) {
+      console.error("Reservation creation error:", err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }

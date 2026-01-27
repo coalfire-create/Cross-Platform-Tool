@@ -10,7 +10,9 @@ export function useReservations() {
   const history = useQuery({
     queryKey: [api.reservations.myHistory.path],
     queryFn: async () => {
-      const res = await fetch(api.reservations.myHistory.path);
+      const res = await fetch(api.reservations.myHistory.path, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to fetch history");
       return api.reservations.myHistory.responses[200].parse(await res.json());
     },
@@ -20,7 +22,9 @@ export function useReservations() {
   const allReservations = useQuery({
     queryKey: [api.reservations.list.path],
     queryFn: async () => {
-      const res = await fetch(api.reservations.list.path);
+      const res = await fetch(api.reservations.list.path, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to fetch all reservations");
       return api.reservations.list.responses[200].parse(await res.json());
     },
@@ -32,6 +36,7 @@ export function useReservations() {
         method: api.reservations.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
 
       if (!res.ok) {

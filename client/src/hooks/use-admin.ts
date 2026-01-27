@@ -11,7 +11,9 @@ export function useAdmin() {
   const allowedStudents = useQuery({
     queryKey: [api.admin.allowedStudents.list.path],
     queryFn: async () => {
-      const res = await fetch(api.admin.allowedStudents.list.path);
+      const res = await fetch(api.admin.allowedStudents.list.path, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to fetch students");
       return api.admin.allowedStudents.list.responses[200].parse(await res.json());
     },
@@ -23,6 +25,7 @@ export function useAdmin() {
         method: api.admin.allowedStudents.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Failed to add student");

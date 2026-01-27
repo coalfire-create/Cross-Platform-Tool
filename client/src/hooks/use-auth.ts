@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type LoginRequest, type SignupRequest } from "@shared/routes";
+import { api } from "@shared/routes";
+import { type LoginRequest, type SignupRequest } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 export function useAuth() {
@@ -9,7 +10,9 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
-      const res = await fetch(api.auth.me.path);
+      const res = await fetch(api.auth.me.path, {
+        credentials: "include",
+      });
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch user");
       return api.auth.me.responses[200].parse(await res.json());
@@ -23,6 +26,7 @@ export function useAuth() {
         method: api.auth.login.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -50,6 +54,7 @@ export function useAuth() {
         method: api.auth.register.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -75,7 +80,10 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch(api.auth.logout.path, { method: api.auth.logout.method });
+      await fetch(api.auth.logout.path, { 
+        method: api.auth.logout.method, 
+        credentials: "include" 
+      });
     },
     onSuccess: () => {
       queryClient.setQueryData([api.auth.me.path], null);

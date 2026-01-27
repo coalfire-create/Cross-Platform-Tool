@@ -130,8 +130,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReservation(reservation: Omit<Reservation, "id" | "createdAt">): Promise<Reservation> {
-    const [newReservation] = await db.insert(reservations).values(reservation).returning();
-    return newReservation;
+    console.log("Storage createReservation - input:", JSON.stringify(reservation, null, 2));
+    try {
+      const [newReservation] = await db.insert(reservations).values(reservation).returning();
+      console.log("Storage createReservation - success:", newReservation);
+      return newReservation;
+    } catch (err) {
+      console.error("Storage createReservation - error:", err);
+      throw err;
+    }
   }
 
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
