@@ -16,6 +16,7 @@ import { eq, and, count, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { getSupabaseAllowedStudent, getSupabaseAllowedStudentsCount, getAllSupabaseAllowedStudents } from "./supabase";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -74,10 +75,16 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  // Whitelist
+  // Whitelist (using Supabase)
   async getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined> {
-    const [student] = await db.select().from(allowedStudents).where(eq(allowedStudents.phoneNumber, phoneNumber));
-    return student;
+    const supabaseStudent = await getSupabaseAllowedStudent(phoneNumber);
+    if (!supabaseStudent) return undefined;
+    return {
+      id: supabaseStudent.id,
+      name: supabaseStudent.name,
+      phoneNumber: supabaseStudent.phone_number,
+      seatNumber: supabaseStudent.seat_number,
+    };
   }
 
   async createAllowedStudent(student: Omit<AllowedStudent, "id">): Promise<AllowedStudent> {
@@ -86,12 +93,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAllowedStudents(): Promise<AllowedStudent[]> {
-    return await db.select().from(allowedStudents);
+    const supabaseStudents = await getAllSupabaseAllowedStudents();
+    return supabaseStudents.map(s => ({
+      id: s.id,
+      name: s.name,
+      phoneNumber: s.phone_number,
+      seatNumber: s.seat_number,
+    }));
   }
 
   async getAllowedStudentsCount(): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(allowedStudents);
-    return Number(result[0]?.count || 0);
+    return await getSupabaseAllowedStudentsCount();
   }
 
   // Schedules
