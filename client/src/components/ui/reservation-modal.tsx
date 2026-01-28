@@ -33,6 +33,7 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("업로드 실패");
