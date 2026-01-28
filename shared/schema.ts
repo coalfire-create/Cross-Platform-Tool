@@ -35,7 +35,7 @@ export const reservations = pgTable("reservations", {
   scheduleId: integer("schedule_id"), // 현장 질문의 경우 필수
   type: text("type").notNull(), // 'onsite' or 'online'
   content: text("content"), // 질문 내용 필드 추가
-  photoUrl: text("photo_url").notNull(),
+  photoUrls: text("photo_urls").array().default([]).notNull(), // 여러 사진 URL 배열
   teacherFeedback: text("teacher_feedback"), // 선생님 답변 추가
   status: text("status").default("pending").notNull(), // 'pending', 'confirmed', 'answered'
   createdAt: timestamp("created_at").defaultNow(),

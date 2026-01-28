@@ -86,7 +86,7 @@ export const api = {
         scheduleId: z.number().optional(),
         type: z.enum(['onsite', 'online']),
         content: z.string().optional(),
-        photoUrl: z.string(),
+        photoUrls: z.array(z.string()).default([]),
       }),
       responses: {
         201: z.custom<typeof reservations.$inferSelect>(),
@@ -122,7 +122,7 @@ export const api = {
       path: '/api/reservations/:id',
       input: z.object({
         content: z.string().optional(),
-        photoUrl: z.string().optional(),
+        photoUrls: z.array(z.string()).optional(),
       }),
       responses: {
         200: z.custom<typeof reservations.$inferSelect>(),

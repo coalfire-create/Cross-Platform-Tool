@@ -196,9 +196,9 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     try {
       console.log("Reservation request body:", req.body);
-      const { scheduleId, type, photoUrl } = api.reservations.create.input.parse(req.body);
+      const { scheduleId, type, photoUrls } = api.reservations.create.input.parse(req.body);
       const userId = (req.user as any).id;
-      console.log("Parsed reservation:", { scheduleId, type, photoUrl, userId });
+      console.log("Parsed reservation:", { scheduleId, type, photoUrls, userId });
 
       if (type === 'onsite') {
         if (!scheduleId) return res.status(400).json({ message: "현장 질문은 교시 선택이 필수입니다." });
@@ -227,7 +227,7 @@ export async function registerRoutes(
         userId,
         scheduleId: (type === 'onsite' && scheduleId) ? scheduleId : null,
         type,
-        photoUrl,
+        photoUrls: photoUrls || [],
         content: req.body.content || null,
         status: 'pending',
         teacherFeedback: null,
@@ -270,8 +270,8 @@ export async function registerRoutes(
         const updated = await storage.updateReservation(id, { status, teacherFeedback });
         res.json(updated);
       } else if (reservation.userId === user.id) {
-        const { content, photoUrl } = req.body;
-        const updated = await storage.updateReservation(id, { content, photoUrl });
+        const { content, photoUrls } = req.body;
+        const updated = await storage.updateReservation(id, { content, photoUrls });
         res.json(updated);
       } else {
         return res.status(403).json({ message: "본인의 예약만 수정할 수 있습니다." });

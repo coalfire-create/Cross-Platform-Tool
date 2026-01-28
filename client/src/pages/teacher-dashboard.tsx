@@ -3,7 +3,7 @@ import { useReservations } from "@/hooks/use-reservations";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin, ImageIcon } from "lucide-react";
+import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -122,8 +122,25 @@ export default function TeacherDashboard() {
 }
 
 function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId, feedback, setFeedback }: any) {
-  const [imageError, setImageError] = useState(false);
-  const hasPhoto = res.photoUrl && res.photoUrl.trim() !== '';
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  
+  const photoUrls = res.photoUrls || [];
+  const hasPhotos = photoUrls.length > 0;
+  const currentPhoto = photoUrls[currentPhotoIndex];
+  const hasImageError = imageErrors.has(currentPhotoIndex);
+
+  const handleImageError = (index: number) => {
+    setImageErrors(prev => new Set(prev).add(index));
+  };
+
+  const nextPhoto = () => {
+    setCurrentPhotoIndex(prev => (prev + 1) % photoUrls.length);
+  };
+
+  const prevPhoto = () => {
+    setCurrentPhotoIndex(prev => (prev - 1 + photoUrls.length) % photoUrls.length);
+  };
   
   return (
     <Card className={cn(
@@ -131,9 +148,9 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
       res.status === 'confirmed' || res.status === 'answered' ? "border-emerald-100 bg-emerald-50/10" : "border-border/60"
     )}>
       <CardContent className="p-0">
-        {hasPhoto && (
+        {hasPhotos && (
           <div className="relative h-48 bg-secondary/30 group">
-            {imageError ? (
+            {hasImageError ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-muted-foreground">
                 <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
                 <span className="text-xs">이미지를 불러올 수 없습니다</span>
@@ -141,19 +158,40 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
               </div>
             ) : (
               <img 
-                src={res.photoUrl} 
+                src={currentPhoto} 
                 alt={res.studentName} 
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                onError={() => setImageError(true)}
+                onError={() => handleImageError(currentPhotoIndex)}
               />
             )}
             <div className="absolute top-2 right-2 flex gap-2">
               <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
                 좌석 {res.seatNumber}
               </div>
+              {photoUrls.length > 1 && (
+                <div className="bg-black/50 backdrop-blur px-2 py-1 rounded-lg text-xs font-medium text-white">
+                  {currentPhotoIndex + 1}/{photoUrls.length}
+                </div>
+              )}
             </div>
+            {photoUrls.length > 1 && (
+              <>
+                <button 
+                  onClick={prevPhoto}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={nextPhoto}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
             <a 
-              href={res.photoUrl} 
+              href={currentPhoto} 
               target="_blank" 
               rel="noreferrer"
               className="absolute bottom-2 right-2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
@@ -163,7 +201,7 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
           </div>
         )}
         <div className="p-4">
-          {!hasPhoto && (
+          {!hasPhotos && (
             <div className="flex items-center gap-2 mb-2">
               <div className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
                 좌석 {res.seatNumber}
@@ -219,29 +257,39 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
                 {res.status === 'answered' ? "답변 수정" : "답변 달기"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl">
+            <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{res.studentName} 학생 질문 답변</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                {hasPhoto && (
-                  <div className="aspect-video rounded-xl overflow-hidden border bg-muted">
-                    {imageError ? (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                        <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
-                        <span className="text-sm">이미지를 불러올 수 없습니다</span>
-                        <a href={res.photoUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1">
-                          원본 파일 다운로드
-                        </a>
-                      </div>
-                    ) : (
-                      <img 
-                        src={res.photoUrl} 
-                        className="w-full h-full object-contain" 
-                        alt="Question" 
-                        onError={() => setImageError(true)}
-                      />
-                    )}
+                {hasPhotos && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      사진 ({photoUrls.length}장)
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {photoUrls.map((url: string, idx: number) => (
+                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border bg-muted">
+                          {imageErrors.has(idx) ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                              <ImageIcon className="w-8 h-8 mb-1 opacity-50" />
+                              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                                다운로드
+                              </a>
+                            </div>
+                          ) : (
+                            <a href={url} target="_blank" rel="noreferrer">
+                              <img 
+                                src={url} 
+                                className="w-full h-full object-cover hover:opacity-80 transition-opacity" 
+                                alt={`Question ${idx + 1}`} 
+                                onError={() => handleImageError(idx)}
+                              />
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {res.content && (
