@@ -3,7 +3,7 @@ import { useReservations } from "@/hooks/use-reservations";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin, ImageIcon, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -232,7 +232,65 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
           </div>
         </div>
       </CardContent>
-      <CardFooter className="px-4 pb-4 pt-0 gap-2">
+      <CardFooter className="px-4 pb-4 pt-0 flex-col gap-2">
+        {hasPhotos && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button 
+                className="w-full rounded-xl"
+                variant="outline"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                상세보기
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>{res.studentName} 학생 질문 ({res.seatNumber}번)</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    사진 ({photoUrls.length}장)
+                  </div>
+                  <div className="space-y-2">
+                    {photoUrls.map((url: string, idx: number) => (
+                      <div key={idx} className="w-full rounded-xl overflow-hidden border bg-muted">
+                        {imageErrors.has(idx) ? (
+                          <div className="w-full aspect-video flex flex-col items-center justify-center text-muted-foreground">
+                            <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                            <span className="text-sm">이미지를 불러올 수 없습니다</span>
+                            <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1">
+                              원본 파일 다운로드
+                            </a>
+                          </div>
+                        ) : (
+                          <a href={url} target="_blank" rel="noreferrer">
+                            <img 
+                              src={url} 
+                              className="w-full object-contain max-h-[60vh]" 
+                              alt={`Question ${idx + 1}`} 
+                              onError={() => handleImageError(idx)}
+                            />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {res.content && (
+                  <div className="bg-muted p-3 rounded-xl text-sm">
+                    <strong>질문 내용:</strong> {res.content}
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                  <span>{res.day} {res.type === 'onsite' ? `${res.period}교시` : ''}</span>
+                  <span>{new Date(res.createdAt).toLocaleString('ko-KR')}</span>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
         {res.type === 'onsite' ? (
           <Button 
             className="w-full rounded-xl" 
