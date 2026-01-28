@@ -16,7 +16,8 @@ import { eq, and, count, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import { getSupabaseAllowedStudent, getSupabaseAllowedStudentsCount, getAllSupabaseAllowedStudents } from "./supabase";
+// Supabase temporarily disabled - using local PostgreSQL
+// import { getSupabaseAllowedStudent, getSupabaseAllowedStudentsCount, getAllSupabaseAllowedStudents } from "./supabase";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -75,16 +76,10 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  // Whitelist (using Supabase)
+  // Whitelist (using local PostgreSQL)
   async getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined> {
-    const supabaseStudent = await getSupabaseAllowedStudent(phoneNumber);
-    if (!supabaseStudent) return undefined;
-    return {
-      id: supabaseStudent.id,
-      name: supabaseStudent.name,
-      phoneNumber: supabaseStudent.phone_number,
-      seatNumber: supabaseStudent.seat_number,
-    };
+    const [student] = await db.select().from(allowedStudents).where(eq(allowedStudents.phoneNumber, phoneNumber));
+    return student;
   }
 
   async createAllowedStudent(student: Omit<AllowedStudent, "id">): Promise<AllowedStudent> {
@@ -93,17 +88,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllAllowedStudents(): Promise<AllowedStudent[]> {
-    const supabaseStudents = await getAllSupabaseAllowedStudents();
-    return supabaseStudents.map(s => ({
-      id: s.id,
-      name: s.name,
-      phoneNumber: s.phone_number,
-      seatNumber: s.seat_number,
-    }));
+    return await db.select().from(allowedStudents).orderBy(allowedStudents.seatNumber);
   }
 
   async getAllowedStudentsCount(): Promise<number> {
-    return await getSupabaseAllowedStudentsCount();
+    const [result] = await db.select({ count: count() }).from(allowedStudents);
+    return result.count;
   }
 
   // Schedules
