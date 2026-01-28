@@ -121,6 +121,16 @@ export async function registerRoutes(
     }
   });
 
+  // === STATS (PUBLIC) ===
+  app.get("/api/stats/students", async (req, res) => {
+    try {
+      const count = await storage.getAllowedStudentsCount();
+      res.json({ count });
+    } catch (err) {
+      res.status(500).json({ message: "통계 조회 실패" });
+    }
+  });
+
   // === AUTH ROUTES ===
 
   app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => {

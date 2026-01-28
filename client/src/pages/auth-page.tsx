@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, GraduationCap, ArrowRight, Loader2 } from "lucide-react";
+import { GraduationCap, ArrowRight, Loader2, Users } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,6 +18,14 @@ const authSchema = z.object({
 export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stats/students")
+      .then(res => res.json())
+      .then(data => setStudentCount(data.count))
+      .catch(() => {});
+  }, []);
 
   if (user) {
     if (user.role === 'teacher') setLocation("/dashboard");
@@ -27,57 +34,37 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      {/* Visual Side */}
-      <div className="hidden lg:flex flex-col justify-between p-12 bg-primary text-primary-foreground relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://pixabay.com/get/gccaaa59c2d53ea3a82f4d6f0fbecda8b7b1564350094c1c7b80ad929d6cf891c09658945c6602a3ff491d88079873028e099257217f9d4f3aad46a3dba2e854c_1280.jpg')] bg-cover bg-center opacity-10 mix-blend-overlay" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
-              <GraduationCap className="w-8 h-8" />
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground py-8 px-6">
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
+              <GraduationCap className="w-7 h-7" />
             </div>
-            <span className="text-2xl font-bold font-display tracking-tight">이강학원</span>
+            <span className="text-xl font-bold font-display tracking-tight">이강학원</span>
           </div>
-          <h1 className="text-5xl font-display font-bold leading-tight mb-6">
-            성장을 위한 <br /> 당신만의 <span className="text-accent">공간</span>.
+          <h1 className="text-2xl font-display font-bold mb-2">
+            질문 예약 시스템
           </h1>
-          <p className="text-lg text-primary-foreground/80 max-w-md leading-relaxed">
-            학습 공간을 예약하고 일정을 관리하며 가장 중요한 것에 집중하세요.
-            더 높은 목표를 향하는 학생들을 위해 설계되었습니다.
-          </p>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-3 gap-8 text-center border-t border-white/10 pt-8">
-          <div>
-            <h3 className="text-3xl font-bold font-display">500+</h3>
-            <p className="text-sm opacity-60">학생수</p>
-          </div>
-          <div>
-            <h3 className="text-3xl font-bold font-display">24/7</h3>
-            <p className="text-sm opacity-60">이용가능</p>
-          </div>
-          <div>
-            <h3 className="text-3xl font-bold font-display">100%</h3>
-            <p className="text-sm opacity-60">집중력</p>
-          </div>
+          {studentCount !== null && (
+            <div className="flex items-center gap-2 text-primary-foreground/80 text-sm">
+              <Users className="w-4 h-4" />
+              <span>현재 수강생 {studentCount}명</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Form Side */}
-      <div className="flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold font-display text-foreground">환영합니다</h2>
-            <p className="text-muted-foreground mt-2">계정에 접속하기 위해 정보를 입력해주세요.</p>
-          </div>
-
+      {/* Form */}
+      <div className="flex-1 px-6 py-8">
+        <div className="max-w-md mx-auto">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8 p-1 h-12 bg-secondary rounded-xl">
-              <TabsTrigger value="login" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+            <TabsList className="grid w-full grid-cols-2 mb-6 p-1 h-11 bg-secondary rounded-xl">
+              <TabsTrigger value="login" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all" data-testid="tab-login">
                 로그인
               </TabsTrigger>
-              <TabsTrigger value="register" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+              <TabsTrigger value="register" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all" data-testid="tab-register">
                 회원가입
               </TabsTrigger>
             </TabsList>
@@ -114,7 +101,7 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 fade-in">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
           name="phoneNumber"
@@ -122,7 +109,12 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
             <FormItem>
               <FormLabel>전화번호</FormLabel>
               <FormControl>
-                <Input placeholder="01012345678" {...field} className="h-12 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors" />
+                <Input 
+                  placeholder="01012345678" 
+                  {...field} 
+                  className="h-12 rounded-xl bg-muted/50 border-border focus:bg-background transition-colors" 
+                  data-testid="input-phone"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -135,7 +127,13 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
             <FormItem>
               <FormLabel>비밀번호</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} className="h-12 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors" />
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  {...field} 
+                  className="h-12 rounded-xl bg-muted/50 border-border focus:bg-background transition-colors" 
+                  data-testid="input-password"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -145,12 +143,19 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
         <Button 
           type="submit" 
           disabled={isLoading} 
-          className="w-full h-12 rounded-xl font-semibold text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full h-12 rounded-xl font-semibold text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
+          data-testid="button-submit"
         >
           {isLoading ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
           {mode === "login" ? "로그인" : "계정 생성"}
           {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
         </Button>
+
+        {mode === "register" && (
+          <p className="text-xs text-muted-foreground text-center">
+            수강생 명단에 등록된 전화번호만 가입 가능합니다
+          </p>
+        )}
       </form>
     </Form>
   );

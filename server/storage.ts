@@ -29,6 +29,7 @@ export interface IStorage {
   getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined>;
   createAllowedStudent(student: Omit<AllowedStudent, "id">): Promise<AllowedStudent>;
   getAllAllowedStudents(): Promise<AllowedStudent[]>;
+  getAllowedStudentsCount(): Promise<number>;
 
   // Schedules
   getSchedules(): Promise<Schedule[]>;
@@ -86,6 +87,11 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAllowedStudents(): Promise<AllowedStudent[]> {
     return await db.select().from(allowedStudents);
+  }
+
+  async getAllowedStudentsCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(allowedStudents);
+    return Number(result[0]?.count || 0);
   }
 
   // Schedules
