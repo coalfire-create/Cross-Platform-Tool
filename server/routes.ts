@@ -9,22 +9,17 @@ import session from "express-session";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage/routes";
 
-// Configure multer for file uploads
+// Configure multer for memory storage (for Object Storage upload)
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: "./uploads",
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
-    },
-  }),
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
-// Ensure uploads directory exists
-if (!fs.existsSync("./uploads")) {
-  fs.mkdirSync("./uploads");
-}
+// Initialize Object Storage Service
+const objectStorageService = new ObjectStorageService();
 
 export async function registerRoutes(
   httpServer: Server,
@@ -104,20 +99,33 @@ export async function registerRoutes(
     next();
   });
 
-  // === FILE UPLOAD ===
-  app.post("/api/upload", upload.single("file"), (req: any, res) => {
+  // === FILE UPLOAD (Object Storage) ===
+  app.post("/api/upload", upload.single("file"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
-    const url = `/uploads/${req.file.filename}`;
-    res.json({ url });
-  });
-
-  // Serve uploads folder statically
-  app.use("/uploads", (req, res, next) => {
-    const filePath = path.join(process.cwd(), "uploads", req.path);
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      res.status(404).end();
+    
+    try {
+      // Get presigned URL for upload
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      
+      // Upload file to Object Storage
+      const uploadResponse = await fetch(uploadURL, {
+        method: "PUT",
+        body: req.file.buffer,
+        headers: {
+          "Content-Type": req.file.mimetype,
+        },
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error("Object Storage upload failed");
+      }
+      
+      // Return the object path that can be used to serve the file
+      res.json({ url: objectPath });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ message: "파일 업로드 실패" });
     }
   });
 
@@ -350,6 +358,9 @@ export async function registerRoutes(
   }
 
   seed();
+
+  // Register Object Storage routes for serving uploaded files
+  registerObjectStorageRoutes(app);
 
   return httpServer;
 }
