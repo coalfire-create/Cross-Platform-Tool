@@ -44,3 +44,6 @@ integrations = ["javascript_object_storage:2.0.0"]
 [userenv]
 
 [userenv.shared]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-2eb2f398-5e82-47d9-9778-1206361fcf11"
