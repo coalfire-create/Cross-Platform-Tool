@@ -117,15 +117,17 @@ export function ReservationModal({ scheduleId, day, period, type, onClose }: Res
 
           <div className="flex flex-col items-center justify-center gap-4">
             {photoUrl ? (
-              <div className="relative group">
-                <img 
-                  src={photoUrl} 
-                  alt="Verification" 
-                  className="w-32 h-32 rounded-full object-cover border-4 border-primary shadow-xl"
-                />
+              <div className="relative w-full group">
+                <div className="w-full aspect-video rounded-xl overflow-hidden border-2 border-primary shadow-lg bg-muted">
+                  <img 
+                    src={photoUrl} 
+                    alt="Verification" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <button 
                   onClick={() => setPhotoUrl(null)}
-                  className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-1.5 shadow-sm hover:scale-110 transition-transform"
+                  className="absolute top-2 right-2 bg-destructive text-white rounded-full p-1.5 shadow-sm hover:scale-110 transition-transform"
                 >
                   <X className="w-4 h-4" />
                 </button>
