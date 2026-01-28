@@ -123,6 +123,7 @@ export default function TeacherDashboard() {
 
 function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId, feedback, setFeedback }: any) {
   const [imageError, setImageError] = useState(false);
+  const hasPhoto = res.photoUrl && res.photoUrl.trim() !== '';
   
   return (
     <Card className={cn(
@@ -130,36 +131,45 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
       res.status === 'confirmed' || res.status === 'answered' ? "border-emerald-100 bg-emerald-50/10" : "border-border/60"
     )}>
       <CardContent className="p-0">
-        <div className="relative h-48 bg-secondary/30 group">
-          {imageError ? (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-muted-foreground">
-              <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
-              <span className="text-xs">이미지를 불러올 수 없습니다</span>
-              <span className="text-xs opacity-70">(HEIC 형식 미지원)</span>
+        {hasPhoto && (
+          <div className="relative h-48 bg-secondary/30 group">
+            {imageError ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-muted-foreground">
+                <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                <span className="text-xs">이미지를 불러올 수 없습니다</span>
+                <span className="text-xs opacity-70">(HEIC 형식 미지원)</span>
+              </div>
+            ) : (
+              <img 
+                src={res.photoUrl} 
+                alt={res.studentName} 
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                onError={() => setImageError(true)}
+              />
+            )}
+            <div className="absolute top-2 right-2 flex gap-2">
+              <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
+                좌석 {res.seatNumber}
+              </div>
             </div>
-          ) : (
-            <img 
-              src={res.photoUrl} 
-              alt={res.studentName} 
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              onError={() => setImageError(true)}
-            />
-          )}
-          <div className="absolute top-2 right-2 flex gap-2">
-            <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
-              좌석 {res.seatNumber}
-            </div>
+            <a 
+              href={res.photoUrl} 
+              target="_blank" 
+              rel="noreferrer"
+              className="absolute bottom-2 right-2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
-          <a 
-            href={res.photoUrl} 
-            target="_blank" 
-            rel="noreferrer"
-            className="absolute bottom-2 right-2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
+        )}
         <div className="p-4">
+          {!hasPhoto && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
+                좌석 {res.seatNumber}
+              </div>
+            </div>
+          )}
           <div className="flex justify-between items-start">
             <h3 className="font-bold text-lg text-foreground truncate">{res.studentName}</h3>
             {res.status !== 'pending' && (
@@ -214,24 +224,26 @@ function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId,
                 <DialogTitle>{res.studentName} 학생 질문 답변</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="aspect-video rounded-xl overflow-hidden border bg-muted">
-                  {imageError ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                      <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
-                      <span className="text-sm">이미지를 불러올 수 없습니다</span>
-                      <a href={res.photoUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1">
-                        원본 파일 다운로드
-                      </a>
-                    </div>
-                  ) : (
-                    <img 
-                      src={res.photoUrl} 
-                      className="w-full h-full object-contain" 
-                      alt="Question" 
-                      onError={() => setImageError(true)}
-                    />
-                  )}
-                </div>
+                {hasPhoto && (
+                  <div className="aspect-video rounded-xl overflow-hidden border bg-muted">
+                    {imageError ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                        <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
+                        <span className="text-sm">이미지를 불러올 수 없습니다</span>
+                        <a href={res.photoUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1">
+                          원본 파일 다운로드
+                        </a>
+                      </div>
+                    ) : (
+                      <img 
+                        src={res.photoUrl} 
+                        className="w-full h-full object-contain" 
+                        alt="Question" 
+                        onError={() => setImageError(true)}
+                      />
+                    )}
+                  </div>
+                )}
                 {res.content && (
                   <div className="bg-muted p-3 rounded-xl text-sm">
                     <strong>질문 내용:</strong> {res.content}
