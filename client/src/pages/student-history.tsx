@@ -1,11 +1,82 @@
 import { StudentLayout } from "@/components/layout";
 import { useReservations } from "@/hooks/use-reservations";
-import { Calendar, Edit2, Trash2, Upload, X, FileText } from "lucide-react";
+import { Calendar, Edit2, Trash2, Upload, X, FileText, Eye, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+
+interface DetailModalProps {
+  reservation: any;
+  onClose: () => void;
+}
+
+function DetailModal({ reservation, onClose }: DetailModalProps) {
+  const [imageError, setImageError] = useState(false);
+  const hasPhoto = reservation.photoUrl && reservation.photoUrl.trim() !== '';
+  
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg rounded-2xl gap-6">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-display text-primary">
+            {reservation.type === 'online' ? '온라인 질문' : `${reservation.day} ${reservation.period}교시`}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {hasPhoto && (
+            <div className="w-full aspect-video rounded-xl overflow-hidden border bg-muted">
+              {imageError ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
+                  <span className="text-sm">이미지를 불러올 수 없습니다</span>
+                  <span className="text-xs mt-1">(HEIC 파일은 브라우저에서 표시되지 않습니다)</span>
+                  <a href={reservation.photoUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-2">
+                    원본 파일 다운로드
+                  </a>
+                </div>
+              ) : (
+                <img 
+                  src={reservation.photoUrl} 
+                  alt="Question" 
+                  className="w-full h-full object-contain"
+                  onError={() => setImageError(true)}
+                />
+              )}
+            </div>
+          )}
+
+          {reservation.content && (
+            <div className="bg-muted p-4 rounded-xl">
+              <div className="text-xs font-medium text-muted-foreground mb-1">질문 내용</div>
+              <p className="text-sm text-foreground">{reservation.content}</p>
+            </div>
+          )}
+
+          {reservation.teacherFeedback && (
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+              <div className="text-xs font-medium text-blue-700 mb-1">선생님 피드백</div>
+              <p className="text-sm text-blue-900">{reservation.teacherFeedback}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+            <span>상태: {reservation.status === 'confirmed' ? '확정' : reservation.status === 'pending' ? '대기중' : reservation.status}</span>
+            <span>{new Date(reservation.createdAt).toLocaleString('ko-KR')}</span>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="w-full rounded-xl" data-testid="button-close-detail">
+            닫기
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface EditModalProps {
   reservation: any;
@@ -135,10 +206,15 @@ function EditModal({ reservation, onClose, onSave, isPending }: EditModalProps) 
 export default function StudentHistory() {
   const { history, updateReservationMutation, deleteReservationMutation } = useReservations();
   const [editingReservation, setEditingReservation] = useState<any>(null);
+  const [viewingReservation, setViewingReservation] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleEdit = (reservation: any) => {
     setEditingReservation(reservation);
+  };
+
+  const handleView = (reservation: any) => {
+    setViewingReservation(reservation);
   };
 
   const handleSaveEdit = (data: { content?: string; photoUrl?: string }) => {
@@ -225,10 +301,22 @@ export default function StudentHistory() {
                   
                   <div className="flex items-center gap-2">
                     {res.photoUrl && (
-                      <div className="h-10 w-10 rounded-full overflow-hidden border border-border">
+                      <div 
+                        className="h-10 w-10 rounded-full overflow-hidden border border-border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                        onClick={() => handleView(res)}
+                      >
                         <img src={res.photoUrl} alt="Question" className="h-full w-full object-cover" />
                       </div>
                     )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleView(res)}
+                      className="h-8 w-8"
+                      data-testid={`button-view-${res.id}`}
+                    >
+                      <Eye className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -284,6 +372,13 @@ export default function StudentHistory() {
           onClose={() => setEditingReservation(null)}
           onSave={handleSaveEdit}
           isPending={updateReservationMutation.isPending}
+        />
+      )}
+
+      {viewingReservation && (
+        <DetailModal
+          reservation={viewingReservation}
+          onClose={() => setViewingReservation(null)}
         />
       )}
     </StudentLayout>
