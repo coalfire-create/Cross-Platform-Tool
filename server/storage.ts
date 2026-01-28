@@ -232,6 +232,15 @@ export class DatabaseStorage implements IStorage {
       ));
     return !!existing;
   }
+
+  async getReservation(id: number): Promise<Reservation | null> {
+    const [reservation] = await db.select().from(reservations).where(eq(reservations.id, id));
+    return reservation || null;
+  }
+
+  async deleteReservation(id: number): Promise<void> {
+    await db.delete(reservations).where(eq(reservations.id, id));
+  }
 }
 
 export const storage = new DatabaseStorage();

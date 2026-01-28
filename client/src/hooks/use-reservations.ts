@@ -60,9 +60,66 @@ export function useReservations() {
     },
   });
 
+  const updateReservationMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { content?: string; photoUrl?: string } }) => {
+      const res = await fetch(`/api/reservations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "수정 실패");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.reservations.myHistory.path] });
+      toast({ title: "수정 완료", description: "질문이 수정되었습니다." });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "수정 실패", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteReservationMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/reservations/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "삭제 실패");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.reservations.myHistory.path] });
+      queryClient.invalidateQueries({ queryKey: [api.schedules.list.path] });
+      toast({ title: "삭제 완료", description: "예약이 삭제되었습니다." });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "삭제 실패", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
   return {
     history,
     allReservations,
     createReservationMutation,
+    updateReservationMutation,
+    deleteReservationMutation,
   };
 }

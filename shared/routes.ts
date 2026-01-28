@@ -116,6 +116,28 @@ export const api = {
           period: number; 
         }>()),
       },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/reservations/:id',
+      input: z.object({
+        content: z.string().optional(),
+        photoUrl: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof reservations.$inferSelect>(),
+        404: errorSchemas.notFound,
+        403: errorSchemas.forbidden,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/reservations/:id',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: errorSchemas.notFound,
+        403: errorSchemas.forbidden,
+      },
     }
   },
   admin: {

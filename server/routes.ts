@@ -255,14 +255,51 @@ export async function registerRoutes(
   });
 
   app.patch("/api/reservations/:id", async (req, res) => {
-    if (!req.user || (req.user as any).role !== 'teacher') return res.sendStatus(401);
+    if (!req.user) return res.sendStatus(401);
     try {
       const id = parseInt(req.params.id);
-      const { status, teacherFeedback } = req.body;
-      const updated = await storage.updateReservation(id, { status, teacherFeedback });
-      res.json(updated);
+      const user = req.user as any;
+      const reservation = await storage.getReservation(id);
+      
+      if (!reservation) {
+        return res.status(404).json({ message: "예약을 찾을 수 없습니다." });
+      }
+
+      if (user.role === 'teacher') {
+        const { status, teacherFeedback } = req.body;
+        const updated = await storage.updateReservation(id, { status, teacherFeedback });
+        res.json(updated);
+      } else if (reservation.userId === user.id) {
+        const { content, photoUrl } = req.body;
+        const updated = await storage.updateReservation(id, { content, photoUrl });
+        res.json(updated);
+      } else {
+        return res.status(403).json({ message: "본인의 예약만 수정할 수 있습니다." });
+      }
     } catch (err) {
       res.status(500).json({ message: "업데이트 실패" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const id = parseInt(req.params.id);
+      const user = req.user as any;
+      const reservation = await storage.getReservation(id);
+      
+      if (!reservation) {
+        return res.status(404).json({ message: "예약을 찾을 수 없습니다." });
+      }
+
+      if (reservation.userId !== user.id && user.role !== 'teacher') {
+        return res.status(403).json({ message: "본인의 예약만 삭제할 수 있습니다." });
+      }
+
+      await storage.deleteReservation(id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "삭제 실패" });
     }
   });
 
