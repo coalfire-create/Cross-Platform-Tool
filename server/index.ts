@@ -1,22 +1,10 @@
 // =================================================================
-// 🚨 [가장 중요] DNS 설정 강제 변경 (IPv6 차단 코드)
-// 이 코드는 반드시 파일의 맨 첫 줄에 있어야 합니다!
+// 🚨 [가장 중요] IPv4 강제 설정 파일 먼저 불러오기
+// 이 줄이 반드시 가장 위에 있어야 DB 연결 전에 설정이 적용됩니다.
 // =================================================================
-import dns from "dns";
-try {
-  // Node.js 17+ 버전부터 지원하는 기능입니다.
-  // 서버가 도메인을 찾을 때 IPv4(옛날 주소)를 최우선으로 찾게 만듭니다.
-  if (dns.setDefaultResultOrder) {
-    dns.setDefaultResultOrder("ipv4first");
-    console.log("✅ [System] DNS 설정 완료: IPv4를 무조건 우선 사용합니다.");
-  }
-} catch (e) {
-  console.error("❌ [System] DNS 설정 실패:", e);
-}
+import "./ipv4-fix"; 
 
-// =================================================================
 // 👇 여기서부터 원래 코드 시작
-// =================================================================
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
