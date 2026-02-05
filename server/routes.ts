@@ -20,18 +20,15 @@ export async function registerRoutes(
 ): Promise<Server> {
 
   // =================================================================
-  // 🚨 [배포 환경 필수 설정] 프록시 및 보안 쿠키 설정
+  // 🚨 [배포 환경 필수 설정]
   // =================================================================
 
-  // 1. 프록시 신뢰 설정 (매우 중요)
-  // Replit, Vercel 등은 로드밸런서(Proxy) 뒤에서 돌아갑니다.
-  // 이 설정이 'true'여야 서버가 HTTPS 연결임을 인식하고 보안 쿠키를 허용합니다.
-  app.set("trust proxy", true);
+  // 1. 프록시 설정 (Render/Replit 배포 시 필수)
+  app.set("trust proxy", 1);
 
-  // 2. CORS 수동 설정 (인증 쿠키 허용)
+  // 2. CORS 수동 설정
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    // 모든 Origin 허용 (보안보다 기능 우선 시)
     if (origin) {
       res.setHeader("Access-Control-Allow-Origin", origin);
     }
@@ -39,30 +36,25 @@ export async function registerRoutes(
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
 
-    // Preflight 요청 바로 통과
     if (req.method === "OPTIONS") return res.sendStatus(200);
     next();
   });
 
-  // 3. 환경 감지 (Replit 또는 Production 환경인지 확인)
-  // REPL_ID가 있으면 Replit 배포 환경으로 간주합니다.
+  // 3. 환경 감지
   const isReplit = !!process.env.REPL_ID;
   const isProduction = process.env.NODE_ENV === "production" || isReplit;
 
-  console.log(`🌍 [Server] 현재 모드: ${isProduction ? "Production/Replit (HTTPS)" : "Development (HTTP)"}`);
+  console.log(`🌍 [Server] 현재 모드: ${isProduction ? "Production (HTTPS)" : "Development (HTTP)"}`);
 
-  // 4. 세션 설정
+  // 4. 세션 설정 (🚨 중요: store 옵션을 제거하여 서버 크래시 방지)
   app.use(session({
     secret: process.env.SESSION_SECRET || "super-secret-key",
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
-    proxy: true, // 🔥 중요: 프록시 뒤에서 쿠키 동작 허용
+    proxy: true, // 프록시 뒤에서 쿠키 동작 허용
     cookie: {
-      // 배포 환경이면 무조건 Secure: true (HTTPS 필요)
-      secure: isProduction,
-      // 배포 환경이면 SameSite: none (크로스 사이트 허용), 로컬이면 lax
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction, // 배포 환경이면 HTTPS 필수
+      sameSite: isProduction ? 'none' : 'lax', // 배포 환경이면 Cross-site 허용
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24, // 1일
     },
@@ -73,7 +65,7 @@ export async function registerRoutes(
   app.use(passport.session());
 
   // =================================================================
-  // 🔐 [인증 로직] Passport 설정
+  // 🔐 [인증 로직]
   // =================================================================
 
   passport.serializeUser((user: any, done) => {
@@ -83,11 +75,7 @@ export async function registerRoutes(
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUser(id);
-      if (!user) {
-        // DB에 유저가 없으면 로그아웃 처리
-        return done(null, false);
-      }
-      done(null, user);
+      done(null, user || false);
     } catch (err) {
       console.error("🔥 [Auth] Deserialize Error:", err);
       done(err);
@@ -105,7 +93,6 @@ export async function registerRoutes(
       return done(null, user);
     } catch (err) { return done(err); }
   }));
-
 
   // =================================================================
   // 📡 [API 라우트]
@@ -131,7 +118,7 @@ export async function registerRoutes(
     }
   });
 
-  // 2. 예약 생성 (핵심 기능)
+  // 2. 예약 생성
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
 
@@ -140,7 +127,6 @@ export async function registerRoutes(
       const userId = (req.user as any).id;
       const content = req.body.content || null;
 
-      // 현장 질문 유효성 검사
       if (type === 'onsite') {
         if (!scheduleId) return res.status(400).json({ message: "교시 정보가 없습니다." });
 
@@ -167,7 +153,6 @@ export async function registerRoutes(
         teacherFeedback: null,
       });
 
-      console.log(`✅ [Reservation] Created ID: ${reservation.id}`);
       res.status(201).json(reservation);
 
     } catch (err: any) {
@@ -177,19 +162,18 @@ export async function registerRoutes(
     }
   });
 
-  // 3. 예약 조회 (내 예약)
+  // 3. 예약 조회
   app.get(api.reservations.myHistory.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     res.json(await storage.getUserReservations((req.user as any).id));
   });
 
-  // 4. 예약 조회 (선생님용 전체)
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     res.json(await storage.getReservationsForTeacher());
   });
 
-  // 5. 예약 수정
+  // 4. 예약 수정 및 삭제
   app.patch("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
@@ -215,7 +199,6 @@ export async function registerRoutes(
     } catch (err) { res.status(500).json({ message: "수정 실패" }); }
   });
 
-  // 6. 예약 삭제
   app.delete("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
@@ -244,6 +227,7 @@ export async function registerRoutes(
     });
   });
 
+  // 🔥 [수정됨] 회원가입: allowed_students 테이블 확인
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
@@ -251,7 +235,13 @@ export async function registerRoutes(
 
       if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
 
-      const { data: allowed } = await supabase.from('students').select('*').eq('phone_number', cleanPhone).single();
+      // ✅ students -> allowed_students 로 변경됨 (중요!)
+      const { data: allowed } = await supabase
+        .from('allowed_students')
+        .select('*')
+        .eq('phone_number', cleanPhone)
+        .single();
+
       if (!allowed) return res.status(403).json({ message: "명단에 없는 번호" });
 
       const newUser = await storage.createUser({ 
@@ -263,7 +253,10 @@ export async function registerRoutes(
       });
 
       req.login(newUser, (err) => err ? res.status(500).json({ message: "Login Fail" }) : res.status(201).json(newUser));
-    } catch (err) { res.status(500).json({ message: "Server Error" }); }
+    } catch (err) { 
+        console.error("Register Error:", err);
+        res.status(500).json({ message: "Server Error" }); 
+    }
   });
 
   app.get(api.auth.me.path, (req, res) => { 
