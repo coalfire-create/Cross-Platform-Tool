@@ -23,7 +23,7 @@ export async function registerRoutes(
   // 🚨 [배포 환경 필수 설정]
   // =================================================================
 
-  // 1. 프록시 설정 (Render/Replit 배포 시 필수)
+  // 1. 프록시 설정
   app.set("trust proxy", 1);
 
   // 2. CORS 수동 설정
@@ -46,15 +46,15 @@ export async function registerRoutes(
 
   console.log(`🌍 [Server] 현재 모드: ${isProduction ? "Production (HTTPS)" : "Development (HTTP)"}`);
 
-  // 4. 세션 설정 (🚨 중요: store 옵션을 제거하여 서버 크래시 방지)
+  // 4. 세션 설정 (메모리 스토어 사용 - 꺼짐 방지)
   app.use(session({
     secret: process.env.SESSION_SECRET || "super-secret-key",
     resave: false,
     saveUninitialized: false,
-    proxy: true, // 프록시 뒤에서 쿠키 동작 허용
+    proxy: true,
     cookie: {
-      secure: isProduction, // 배포 환경이면 HTTPS 필수
-      sameSite: isProduction ? 'none' : 'lax', // 배포 환경이면 Cross-site 허용
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24, // 1일
     },
@@ -227,7 +227,7 @@ export async function registerRoutes(
     });
   });
 
-  // 🔥 [수정됨] 회원가입: allowed_students 테이블 확인
+  // ✅ 회원가입: allowed_students 테이블 확인
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
@@ -235,9 +235,8 @@ export async function registerRoutes(
 
       if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
 
-      // ✅ students -> allowed_students 로 변경됨 (중요!)
       const { data: allowed } = await supabase
-        .from('allowed_students')
+        .from('allowed_students') // 테이블 이름 정확함
         .select('*')
         .eq('phone_number', cleanPhone)
         .single();
@@ -264,6 +263,7 @@ export async function registerRoutes(
     res.json(req.user); 
   });
 
+  // ✅ 스케줄 및 예약 현황 조회
   app.get(api.schedules.list.path, async (req, res) => {
     const schedules = await storage.getSchedules();
     const result = await Promise.all(schedules.map(async (s) => {
@@ -274,8 +274,23 @@ export async function registerRoutes(
     res.json(result);
   });
 
+  // ✅ [수정됨] 수강생 명수 카운트 (DB 직접 연결)
+  // storage.ts를 거치지 않고 직접 'allowed_students' 테이블을 셉니다.
   app.get("/api/stats/students", async (req, res) => {
-    try { res.json({ count: await storage.getAllowedStudentsCount() }); } catch (err) { res.status(500).json({ message: "Error" }); }
+    try {
+      // head: true를 쓰면 데이터를 안 가져오고 '숫자'만 셉니다 (빠름)
+      const { count, error } = await supabase
+        .from('allowed_students')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+
+      // 숫자가 없으면 0을 보냅니다.
+      res.json({ count: count || 0 });
+    } catch (err) {
+      console.error("Stats Error:", err);
+      res.status(500).json({ message: "Error" });
+    }
   });
 
   async function seed() {} seed();
