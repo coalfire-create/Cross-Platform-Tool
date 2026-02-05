@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -7,9 +7,8 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import multer from "multer";
-import { supabase } from "./db"; // ✅ Supabase 연결 가져오기
+import { supabase } from "./db";
 
-// 1. 메모리에 임시 저장 (Supabase로 바로 쏘기 위해)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB 제한
@@ -20,203 +19,203 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  // 2. 파일 업로드 API (Supabase Storage 연동)
-  app.post("/api/upload", upload.single("file"), async (req: any, res) => {
-    if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
+  // =================================================================
+  // 🚨 [배포 환경 필수 설정] 프록시 및 보안 쿠키 설정
+  // =================================================================
 
+  // 1. 프록시 신뢰 설정 (매우 중요)
+  // Replit, Vercel 등은 로드밸런서(Proxy) 뒤에서 돌아갑니다.
+  // 이 설정이 'true'여야 서버가 HTTPS 연결임을 인식하고 보안 쿠키를 허용합니다.
+  app.set("trust proxy", true);
+
+  // 2. CORS 수동 설정 (인증 쿠키 허용)
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    // 모든 Origin 허용 (보안보다 기능 우선 시)
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+
+    // Preflight 요청 바로 통과
+    if (req.method === "OPTIONS") return res.sendStatus(200);
+    next();
+  });
+
+  // 3. 환경 감지 (Replit 또는 Production 환경인지 확인)
+  // REPL_ID가 있으면 Replit 배포 환경으로 간주합니다.
+  const isReplit = !!process.env.REPL_ID;
+  const isProduction = process.env.NODE_ENV === "production" || isReplit;
+
+  console.log(`🌍 [Server] 현재 모드: ${isProduction ? "Production/Replit (HTTPS)" : "Development (HTTP)"}`);
+
+  // 4. 세션 설정
+  app.use(session({
+    secret: process.env.SESSION_SECRET || "super-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    store: storage.sessionStore,
+    proxy: true, // 🔥 중요: 프록시 뒤에서 쿠키 동작 허용
+    cookie: {
+      // 배포 환경이면 무조건 Secure: true (HTTPS 필요)
+      secure: isProduction,
+      // 배포 환경이면 SameSite: none (크로스 사이트 허용), 로컬이면 lax
+      sameSite: isProduction ? 'none' : 'lax',
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24, // 1일
+    },
+  }));
+
+  // 5. Passport 초기화
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // =================================================================
+  // 🔐 [인증 로직] Passport 설정
+  // =================================================================
+
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: number, done) => {
     try {
-      // 파일 이름을 유니크하게 만듭니다 (한글 깨짐 방지 위해 영문/숫자 변환)
-      const fileExt = req.file.originalname.split('.').pop();
-      const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}.${fileExt}`;
-      const filePath = `${fileName}`; // 폴더 없이 바로 저장
-
-      // ✅ Supabase 'uploads' 버킷에 업로드
-      const { data, error } = await supabase.storage
-        .from('uploads') // 아까 만든 버킷 이름
-        .upload(filePath, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: false
-        });
-
-      if (error) {
-        console.error("Supabase 업로드 에러:", error);
-        throw error;
+      const user = await storage.getUser(id);
+      if (!user) {
+        // DB에 유저가 없으면 로그아웃 처리
+        return done(null, false);
       }
-
-      // ✅ 업로드된 파일의 인터넷 주소(Public URL) 가져오기
-      const { data: publicUrlData } = supabase.storage
-        .from('uploads')
-        .getPublicUrl(filePath);
-
-      const fileUrl = publicUrlData.publicUrl;
-      console.log("업로드 성공:", fileUrl);
-
-      res.json({ url: fileUrl });
-
-    } catch (error) {
-      console.error("Upload failed:", error);
-      res.status(500).json({ message: "사진 업로드에 실패했습니다." });
+      done(null, user);
+    } catch (err) {
+      console.error("🔥 [Auth] Deserialize Error:", err);
+      done(err);
     }
   });
 
-  // ============================================================
-  // 아래부터는 기존 코드와 동일합니다 (로그인, 예약 등)
-  // ============================================================
-
-  // Passport 설정
-  passport.use(new LocalStrategy({
-    usernameField: 'phoneNumber',
-    passwordField: 'password'
-  }, async (phoneNumber, password, done) => {
+  passport.use(new LocalStrategy({ usernameField: 'phoneNumber', passwordField: 'password' }, async (phone, pw, done) => {
     try {
-      const cleanPhone = phoneNumber.replace(/-/g, '');
+      const cleanPhone = phone.replace(/-/g, '');
       const user = await storage.getUserByPhone(cleanPhone);
-      if (!user) return done(null, false, { message: '등록되지 않은 번호' });
-      if (user.password !== password) return done(null, false, { message: '비번 불일치' });
+
+      if (!user || user.password !== pw) {
+        return done(null, false, { message: '정보가 일치하지 않습니다.' });
+      }
       return done(null, user);
     } catch (err) { return done(err); }
   }));
 
-  passport.serializeUser((user: any, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
-    try { const user = await storage.getUser(id); done(null, user); } 
-    catch (err) { done(err); }
-  });
 
-  app.use(session({
-    secret: process.env.SESSION_SECRET || "secret",
-    resave: true,
-    saveUninitialized: true,
-    store: storage.sessionStore,
-    proxy: true,
-    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "lax" },
-  }));
+  // =================================================================
+  // 📡 [API 라우트]
+  // =================================================================
 
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  // CORS
-  app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Origin", req.headers.origin);
-    res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With");
-    if (req.method === "OPTIONS") res.sendStatus(200); else next();
-  });
-
-  app.use("/api", (req, res, next) => {
-    if (req.path !== "/login" && req.path !== "/register" && !req.isAuthenticated()) {
-      // console.log(`Unauthorized: ${req.method} ${req.path}`);
-    }
-    next();
-  });
-
-  // 통계
-  app.get("/api/stats/students", async (req, res) => {
-    try { res.json({ count: await storage.getAllowedStudentsCount() }); } 
-    catch (err) { res.status(500).json({ message: "Error" }); }
-  });
-
-  // Auth
-  app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => res.json(req.user));
-  app.post(api.auth.logout.path, (req, res, next) => req.logout((err) => err ? next(err) : res.sendStatus(200)));
-
-  // 회원가입 (Supabase 명단 확인)
-  app.post(api.auth.register.path, async (req, res) => {
+  // 1. 파일 업로드
+  app.post("/api/upload", upload.single("file"), async (req: any, res) => {
+    if (!req.file) return res.status(400).json({ message: "파일 없음" });
     try {
-      const { phoneNumber, password } = api.auth.register.input.parse(req.body);
-      const cleanPhone = phoneNumber.replace(/-/g, '');
+      const fileExt = req.file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
 
-      if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
+      const { error } = await supabase.storage
+        .from('uploads')
+        .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
 
-      const { data: allowed, error } = await supabase
-        .from('students').select('*').eq('phone_number', cleanPhone).single();
+      if (error) throw error;
 
-      if (error || !allowed) return res.status(403).json({ message: "명단에 없는 번호" });
-
-      const newUser = await storage.createUser({
-        phoneNumber: cleanPhone, password, 
-        name: allowed.name, seatNumber: parseInt(allowed.seat_number), role: "student"
-      });
-      req.login(newUser, (err) => err ? res.status(500).json({ message: "Login Fail" }) : res.status(201).json(newUser));
-    } catch (err) {
-      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
-      res.status(500).json({ message: "Server Error" });
+      const { data } = supabase.storage.from('uploads').getPublicUrl(fileName);
+      res.json({ url: data.publicUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 
-  app.get(api.auth.me.path, (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    res.json(req.user);
-  });
-
-  // Schedules & Reservations
-  app.get(api.schedules.list.path, async (req, res) => {
-    const schedules = await storage.getSchedules();
-    const result = await Promise.all(schedules.map(async (s) => {
-      const count = await storage.getReservationCount(s.id);
-      const isReserved = req.user ? await storage.checkUserReserved((req.user as any).id, s.id) : false;
-      return { ...s, currentCount: count, isReservedByUser: isReserved };
-    }));
-    res.json(result);
-  });
-
+  // 2. 예약 생성 (핵심 기능)
   app.post(api.reservations.create.path, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
+    if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
+
     try {
       const { scheduleId, type, photoUrls } = api.reservations.create.input.parse(req.body);
       const userId = (req.user as any).id;
+      const content = req.body.content || null;
 
+      // 현장 질문 유효성 검사
       if (type === 'onsite') {
-        if (!scheduleId) return res.status(400).json({ message: "교시 필수" });
-        if (await storage.getDailyOnsiteCount(userId, new Date()) >= 3) return res.status(403).json({ message: "3회 초과" });
+        if (!scheduleId) return res.status(400).json({ message: "교시 정보가 없습니다." });
 
-        const sch = await storage.getSchedule(scheduleId);
-        const cnt = await storage.getReservationCount(scheduleId);
-        if (!sch || cnt >= sch.capacity) return res.status(409).json({ message: "정원 초과" });
-        if (await storage.checkUserReserved(userId, scheduleId)) return res.status(409).json({ message: "이미 예약됨" });
+        const dailyCount = await storage.getDailyOnsiteCount(userId, new Date());
+        if (dailyCount >= 3) return res.status(403).json({ message: "현장 질문은 하루 3회까지만 가능합니다." });
+
+        const schedule = await storage.getSchedule(scheduleId);
+        const count = await storage.getReservationCount(scheduleId);
+
+        if (!schedule) return res.status(404).json({ message: "존재하지 않는 시간표입니다." });
+        if (count >= schedule.capacity) return res.status(409).json({ message: "마감된 시간입니다." });
+
+        const hasReserved = await storage.checkUserReserved(userId, scheduleId);
+        if (hasReserved) return res.status(409).json({ message: "이미 예약한 시간입니다." });
       }
 
-      const r = await storage.createReservation({
-        userId, scheduleId: (type === 'onsite' && scheduleId) ? scheduleId : null,
-        type, photoUrls: photoUrls || [], content: req.body.content || null,
-        status: 'pending', teacherFeedback: null,
+      const reservation = await storage.createReservation({
+        userId,
+        scheduleId: (type === 'onsite' && scheduleId) ? scheduleId : null,
+        type,
+        photoUrls: photoUrls || [],
+        content,
+        status: 'pending',
+        teacherFeedback: null,
       });
-      res.status(201).json(r);
-    } catch (err) {
-      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
-      res.status(500).json({ message: "예약 생성 실패" });
+
+      console.log(`✅ [Reservation] Created ID: ${reservation.id}`);
+      res.status(201).json(reservation);
+
+    } catch (err: any) {
+      console.error("❌ [Reservation] Failed:", err);
+      if (err instanceof z.ZodError) return res.status(400).json({ message: "입력값 오류" });
+      res.status(500).json({ message: err.message || "서버 오류" });
     }
   });
 
+  // 3. 예약 조회 (내 예약)
   app.get(api.reservations.myHistory.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     res.json(await storage.getUserReservations((req.user as any).id));
   });
 
+  // 4. 예약 조회 (선생님용 전체)
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     res.json(await storage.getReservationsForTeacher());
   });
 
+  // 5. 예약 수정
   app.patch("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const id = parseInt(req.params.id);
       const user = req.user as any;
       const r = await storage.getReservation(id);
+
       if (!r) return res.status(404).json({ message: "예약 없음" });
 
       if (user.role === 'teacher') {
-        res.json(await storage.updateReservation(id, { status: req.body.status, teacherFeedback: req.body.teacherFeedback }));
+        res.json(await storage.updateReservation(id, { 
+          status: req.body.status, 
+          teacherFeedback: req.body.teacherFeedback 
+        }));
       } else if (r.userId === user.id) {
-        res.json(await storage.updateReservation(id, { content: req.body.content, photoUrls: req.body.photoUrls }));
+        res.json(await storage.updateReservation(id, { 
+          content: req.body.content, 
+          photoUrls: req.body.photoUrls 
+        }));
       } else {
         res.status(403).json({ message: "권한 없음" });
       }
     } catch (err) { res.status(500).json({ message: "수정 실패" }); }
   });
 
+  // 6. 예약 삭제
   app.delete("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
@@ -230,7 +229,62 @@ export async function registerRoutes(
     } catch (err) { res.status(500).json({ message: "삭제 실패" }); }
   });
 
-  async function seed() {} seed();
+  // =================================================================
+  // 🔑 [Auth 라우트]
+  // =================================================================
 
+  app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => {
+    res.json(req.user);
+  });
+
+  app.post(api.auth.logout.path, (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      req.session.destroy(() => res.sendStatus(200));
+    });
+  });
+
+  app.post(api.auth.register.path, async (req, res) => {
+    try {
+      const { phoneNumber, password } = api.auth.register.input.parse(req.body);
+      const cleanPhone = phoneNumber.replace(/-/g, '');
+
+      if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
+
+      const { data: allowed } = await supabase.from('students').select('*').eq('phone_number', cleanPhone).single();
+      if (!allowed) return res.status(403).json({ message: "명단에 없는 번호" });
+
+      const newUser = await storage.createUser({ 
+        phoneNumber: cleanPhone, 
+        password, 
+        name: allowed.name, 
+        seatNumber: parseInt(allowed.seat_number), 
+        role: "student" 
+      });
+
+      req.login(newUser, (err) => err ? res.status(500).json({ message: "Login Fail" }) : res.status(201).json(newUser));
+    } catch (err) { res.status(500).json({ message: "Server Error" }); }
+  });
+
+  app.get(api.auth.me.path, (req, res) => { 
+    if (!req.user) return res.sendStatus(401); 
+    res.json(req.user); 
+  });
+
+  app.get(api.schedules.list.path, async (req, res) => {
+    const schedules = await storage.getSchedules();
+    const result = await Promise.all(schedules.map(async (s) => {
+      const count = await storage.getReservationCount(s.id);
+      const isReserved = req.user ? await storage.checkUserReserved((req.user as any).id, s.id) : false;
+      return { ...s, currentCount: count, isReservedByUser: isReserved };
+    }));
+    res.json(result);
+  });
+
+  app.get("/api/stats/students", async (req, res) => {
+    try { res.json({ count: await storage.getAllowedStudentsCount() }); } catch (err) { res.status(500).json({ message: "Error" }); }
+  });
+
+  async function seed() {} seed();
   return httpServer;
 }

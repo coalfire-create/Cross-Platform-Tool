@@ -32,9 +32,18 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: "0.0.0.0", // 외부 접속 허용
     fs: {
       strict: true,
       deny: ["**/.*"],
+    },
+    // 🔥 [핵심 수정] 여기가 빠져 있어서 안 됐던 겁니다!
+    proxy: {
+      "/api": {
+        target: "http://0.0.0.0:5000", // 백엔드 포트로 연결
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

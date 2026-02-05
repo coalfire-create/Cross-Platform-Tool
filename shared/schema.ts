@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -39,6 +39,13 @@ export const reservations = pgTable("reservations", {
   teacherFeedback: text("teacher_feedback"), // 선생님 답변 추가
   status: text("status").default("pending").notNull(), // 'pending', 'confirmed', 'answered'
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 🔥 [추가된 부분] 로그인 세션을 저장할 테이블 정의
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
 });
 
 // === SCHEMAS ===

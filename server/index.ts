@@ -2,24 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-// [추가된 부분 1] Supabase 라이브러리 불러오기
-import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 const httpServer = createServer(app);
 
-// [추가된 부분 2] Supabase 연결 설정 (Secrets에서 키 가져오기)
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-// 키가 제대로 있는지 확인 (없으면 에러 로그 띄움)
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("⚠️ 경고: Supabase URL 또는 Key가 Secrets에 설정되지 않았습니다. DB 연결이 실패할 수 있습니다.");
-}
-
-// Supabase 클라이언트 생성 및 내보내기 (다른 파일에서 쓸 수 있게 export)
-export const supabase = createClient(supabaseUrl || "", supabaseKey || "");
-
+// 🚨 [수정됨] Supabase 코드는 여기서 다 뺐습니다! (db.ts에서 관리)
+// 순환 참조 에러를 막기 위해서입니다.
 
 declare module "http" {
   interface IncomingMessage {
@@ -27,28 +15,23 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// 로그 함수
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// 🔥 [로그 강화] 요청이 들어오자마자 즉시 로그를 찍습니다.
 app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    log(`➡️ [요청 수신] ${req.method} ${req.path}`);
+  }
+
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -62,11 +45,10 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      let logLine = `⬅️ [응답 완료] ${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -75,18 +57,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // 라우트 등록
   await registerRoutes(httpServer, app);
 
+  // 에러 핸들링
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
+    console.error("🔥 Server Error:", err); // 에러 발생 시 빨간 로그 출력
+    if (res.headersSent) return next(err);
     return res.status(status).json({ message });
   });
 
@@ -97,15 +76,11 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  // 포트 5000번 고정
+  const port = 5000;
+  httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+    log(`-------------------------------------------`);
+    log(`✅ 서버가 정상적으로 켜졌습니다 (Port ${port})`);
+    log(`-------------------------------------------`);
+  });
 })();
