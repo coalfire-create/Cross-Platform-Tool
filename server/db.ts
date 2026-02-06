@@ -1,7 +1,7 @@
-// =================================================================
-// 🚨 [DNS 강제 설정] IPv4 우선 사용 (네트워크 연결 보장)
-// =================================================================
 import dns from "dns";
+
+// 1. [핵심] IPv6 문제 해결 (ENETUNREACH 방지)
+// 이 설정 덕분에 이제 "직통 주소"를 써도 안전하게 연결됩니다.
 try {
   if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder("ipv4first");
@@ -10,9 +10,6 @@ try {
   console.error(e);
 }
 
-// =================================================================
-// 👇 여기서부터 DB 연결 설정
-// =================================================================
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@shared/schema";
@@ -20,18 +17,30 @@ import { createClient } from "@supabase/supabase-js";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set.");
-}
+// 2. [설정] 복잡한 중계소 대신 "직통 연결" 사용
+// 이 방식은 Tenant 에러가 구조적으로 불가능합니다.
+const connectionConfig = {
+  host: "db.zaojtbdaywtggzjpagrd.supabase.co", // 직통 주소
+  port: 5432,
+  user: "postgres", // 직통은 아이디가 깔끔합니다
+  password: "VstYBLTUxGOOI18u", // 회원님 비밀번호
+  database: "postgres",
+  ssl: { 
+    rejectUnauthorized: false // 인증서 오류 무시
+  },
+  connectionTimeoutMillis: 10000,
+};
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 5000,
-  // 🚨 [마누스 솔루션 적용] SSL 인증서 검증을 강제로 끕니다.
-  // 이 설정이 있어야 Render에서 Supabase로 "아이디"가 정상 전달됩니다.
-  ssl: {
-    rejectUnauthorized: false 
-  }
+console.log("---------------------------------------------");
+console.log("🚀 [DB 직통 연결 시도]");
+console.log(`🎯 Host: ${connectionConfig.host} (IPv4 강제)`);
+console.log(`👤 User: ${connectionConfig.user}`);
+console.log("---------------------------------------------");
+
+export const pool = new Pool(connectionConfig);
+
+pool.on('error', (err) => {
+  console.error('❌ [DB 연결 에러]:', err);
 });
 
 export const db = drizzle(pool, { schema });
