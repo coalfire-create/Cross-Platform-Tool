@@ -1,7 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { fileURLToPath } from "url"; // 👈 필수 추가
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+// 👇 __dirname 수동 생성 (이게 없어서 에러 났던 것)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [
@@ -21,27 +26,18 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      // 🚨 [수정 완료] import.meta.dirname -> __dirname 으로 변경
-      // Node.js CJS 환경에서 경로를 올바르게 찾도록 수정했습니다.
       "@": path.resolve(__dirname, "client", "src"),
       "@shared": path.resolve(__dirname, "shared"),
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
-  // 🚨 [수정 완료] 여기도 __dirname 적용
   root: path.resolve(__dirname, "client"),
   build: {
-    // 🚨 [수정 완료] 여기도 __dirname 적용
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
-    host: "0.0.0.0", // 외부 접속 허용
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
-    // 🔥 [핵심 설정 유지] 백엔드 연결 프록시 설정
+    host: "0.0.0.0",
     proxy: {
       "/api": {
         target: "http://0.0.0.0:5000",
