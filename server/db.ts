@@ -21,12 +21,13 @@ const { Pool } = pg;
 // 이 방식은 Tenant 에러가 구조적으로 불가능합니다.
 const connectionConfig = {
   host: "15.164.120.176",
-  port: 5432,
-  user: "postgres",
+  port: 6543,
+  user: "postgres.zaojtbdaywtggzjpagrd",
   password: "VstYBLTUxGOOI18u",
   database: "postgres",
+  family: 4, // ⭐ 추가 안전장치 (선택사항)
   ssl: { 
-    rejectUnauthorized: false
+    rejectUnauthorized: false 
   },
   connectionTimeoutMillis: 10000,
 };
