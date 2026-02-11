@@ -23,10 +23,8 @@ export async function registerRoutes(
   // 🚨 [배포 환경 필수 설정]
   // =================================================================
 
-  // 1. 프록시 설정
   app.set("trust proxy", 1);
 
-  // 2. CORS 수동 설정
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
@@ -40,13 +38,11 @@ export async function registerRoutes(
     next();
   });
 
-  // 3. 환경 감지
   const isReplit = !!process.env.REPL_ID;
   const isProduction = process.env.NODE_ENV === "production" || isReplit;
 
   console.log(`🌍 [Server] 현재 모드: ${isProduction ? "Production (HTTPS)" : "Development (HTTP)"}`);
 
-  // 4. 세션 설정 (메모리 스토어 사용 - 꺼짐 방지)
   app.use(session({
     secret: process.env.SESSION_SECRET || "super-secret-key",
     resave: false,
@@ -60,7 +56,6 @@ export async function registerRoutes(
     },
   }));
 
-  // 5. Passport 초기화
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -227,7 +222,7 @@ export async function registerRoutes(
     });
   });
 
-  // ✅ 회원가입: allowed_students 테이블 확인
+  // ✅ 회원가입: [수정완료] username 누락 에러 방지
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
@@ -236,18 +231,20 @@ export async function registerRoutes(
       if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
 
       const { data: allowed } = await supabase
-        .from('allowed_students') // 테이블 이름 정확함
+        .from('allowed_students')
         .select('*')
         .eq('phone_number', cleanPhone)
         .single();
 
       if (!allowed) return res.status(403).json({ message: "명단에 없는 번호" });
 
+      // 🔥 핵심 수정: username에 전화번호를 넣어 Not-Null 제약조건 해결
       const newUser = await storage.createUser({ 
+        username: cleanPhone, 
         phoneNumber: cleanPhone, 
         password, 
         name: allowed.name, 
-        seatNumber: parseInt(allowed.seat_number), 
+        seatNumber: allowed.seat_number ? allowed.seat_number.toString() : "", 
         role: "student" 
       });
 
@@ -274,18 +271,14 @@ export async function registerRoutes(
     res.json(result);
   });
 
-  // ✅ [수정됨] 수강생 명수 카운트 (DB 직접 연결)
-  // storage.ts를 거치지 않고 직접 'allowed_students' 테이블을 셉니다.
+  // ✅ 수강생 명수 카운트
   app.get("/api/stats/students", async (req, res) => {
     try {
-      // head: true를 쓰면 데이터를 안 가져오고 '숫자'만 셉니다 (빠름)
       const { count, error } = await supabase
         .from('allowed_students')
         .select('*', { count: 'exact', head: true });
 
       if (error) throw error;
-
-      // 숫자가 없으면 0을 보냅니다.
       res.json({ count: count || 0 });
     } catch (err) {
       console.error("Stats Error:", err);
@@ -293,6 +286,5 @@ export async function registerRoutes(
     }
   });
 
-  async function seed() {} seed();
   return httpServer;
 }
