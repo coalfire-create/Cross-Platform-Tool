@@ -20,17 +20,17 @@ const { Pool } = pg;
 // 2. [설정] 복잡한 중계소 대신 "직통 연결" 사용
 // 이 방식은 Tenant 에러가 구조적으로 불가능합니다.
 const connectionConfig = {
-  host: "db.zaojtbdaywtggzjpagrd.supabase.co", // 직통 주소
+  host: "db.zaojtbdaywtggzjpagrd.supabase.co",
   port: 5432,
-  user: "postgres", // 직통은 아이디가 깔끔합니다
-  password: "VstYBLTUxGOOI18u", // 회원님 비밀번호
+  user: "postgres",
+  password: "VstYBLTUxGOOI18u",
   database: "postgres",
+  family: 4, // ✅ 추가
   ssl: { 
-    rejectUnauthorized: false // 인증서 오류 무시
+    rejectUnauthorized: false
   },
   connectionTimeoutMillis: 10000,
 };
-
 console.log("---------------------------------------------");
 console.log("🚀 [DB 직통 연결 시도]");
 console.log(`🎯 Host: ${connectionConfig.host} (IPv4 강제)`);
