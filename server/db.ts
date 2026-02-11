@@ -1,6 +1,4 @@
 import dns from "dns";
-// 1. [핵심] IPv6 문제 해결 (ENETUNREACH 방지)
-// 이 설정 덕분에 이제 "직통 주소"를 써도 안전하게 연결됩니다.
 try {
   if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder("ipv4first");
@@ -8,19 +6,24 @@ try {
 } catch (e) {
   console.error(e);
 }
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
+
 const { Pool } = pg;
 
-// 2. [설정] Direct 연결 (환경변수 NODE_OPTIONS와 함께 IPv4 강제)
+// DATABASE_URL 환경변수 사용하되, 호스트만 IPv4로 교체
+const databaseUrl = process.env.DATABASE_URL || "";
+const url = new URL(databaseUrl);
+
 const connectionConfig = {
-  host: "db.zaojtbdaywtggzjpagrd.supabase.co", // ⭐ Direct 주소
-  port: 5432, // ⭐ Direct 포트
-  user: "postgres", // ⭐ 프로젝트명 없이
-  password: "VstYBLTUxGOOI18u",
-  database: "postgres",
+  host: "15.164.120.176", // ⭐ Pooler IPv4 (도메인 대신)
+  port: parseInt(url.port) || 5432,
+  user: url.username, // postgres.zaojtbdaywtggzjpagrd
+  password: url.password, // VstYBLTUxGOOI18u
+  database: url.pathname.slice(1) || "postgres",
   ssl: { 
     rejectUnauthorized: false 
   },
@@ -28,8 +31,9 @@ const connectionConfig = {
 };
 
 console.log("---------------------------------------------");
-console.log("🚀 [DB Direct 연결 시도]");
-console.log(`🎯 Host: ${connectionConfig.host} (IPv4 강제)`);
+console.log("🚀 [DB Pooler 연결 (IPv4)]");
+console.log(`🎯 Host: ${connectionConfig.host}`);
+console.log(`📍 Port: ${connectionConfig.port}`);
 console.log(`👤 User: ${connectionConfig.user}`);
 console.log("---------------------------------------------");
 
