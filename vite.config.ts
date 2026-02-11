@@ -1,12 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { fileURLToPath } from "url"; // 👈 필수 추가
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// 👇 __dirname 수동 생성 (이게 없어서 에러 났던 것)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// 👇 [핵심 수정] 복잡한 import.meta 대신, 현재 폴더 위치를 바로 가져옵니다.
+// 이 방식은 CJS/ESM 상관없이 무조건 작동합니다.
+const __dirname = process.cwd();
 
 export default defineConfig({
   plugins: [

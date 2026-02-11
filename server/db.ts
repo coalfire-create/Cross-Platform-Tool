@@ -1,7 +1,6 @@
 import dns from "dns";
 
-// 🛑 [시스템 해킹] DNS 조회 함수 강제 교체 (IPv6 원천 봉쇄)
-// Render 서버가 죽어도 IPv6로 못 가게 막는 코드입니다.
+// 🛑 [네트워크] IPv4 강제 설정 (Render 접속 오류 방지)
 const originalLookup = dns.lookup;
 // @ts-ignore
 dns.lookup = (hostname, options, callback) => {
@@ -10,7 +9,7 @@ dns.lookup = (hostname, options, callback) => {
     options = {};
   }
   options = options || {};
-  options.family = 4; // 🔥 무조건 IPv4만 찾아라! (강제 명령)
+  options.family = 4; // 무조건 IPv4만 사용
   return originalLookup(hostname, options, callback);
 };
 
@@ -21,13 +20,12 @@ import { createClient } from "@supabase/supabase-js";
 
 const { Pool } = pg;
 
-// ✅ [설정] 환경변수 무시하고 "직통 연결" 정보 직접 입력
-// 이유: aws-0/aws-1 혼란을 피하고, Tenant 에러를 방지하기 위함
+// ✅ [수정 완료] db... (X) -> aws-1... (O)
+// 회원님이 찾으신 "정답 주소"를 여기에 넣었습니다.
 const connectionConfig = {
-  // ⭐ 직통 주소 사용 (aws-0, aws-1 신경 쓸 필요 없음)
-  host: "db.zaojtbdaywtggzjpagrd.supabase.co", 
-  port: 5432,
-  user: "postgres", // 직통이라 아이디가 깔끔함
+  host: "aws-1-ap-northeast-2.pooler.supabase.com", // ⭐ 여기가 aws-1 입니다
+  port: 5432, 
+  user: "postgres.zaojtbdaywtggzjpagrd", // 프로젝트 ID가 포함된 유저명
   password: "VstYBLTUxGOOI18u", // 비밀번호
   database: "postgres",
   ssl: { 
@@ -37,7 +35,7 @@ const connectionConfig = {
 };
 
 console.log("---------------------------------------------");
-console.log("🚀 [DB 연결] IPv4 강제 모드로 접속 시도");
+console.log("🚀 [DB 연결 시작] 정답 주소(aws-1)로 접속합니다.");
 console.log(`🎯 Host: ${connectionConfig.host}`);
 console.log("---------------------------------------------");
 
