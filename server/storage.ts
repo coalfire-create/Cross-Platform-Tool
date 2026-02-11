@@ -16,8 +16,6 @@ import { eq, and, count, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-// Supabase temporarily disabled - using local PostgreSQL
-// import { getSupabaseAllowedStudent, getSupabaseAllowedStudentsCount, getAllSupabaseAllowedStudents } from "./supabase";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -25,8 +23,8 @@ export interface IStorage {
   // Auth
   getUser(id: number): Promise<User | undefined>;
   getUserByPhone(phoneNumber: string): Promise<User | undefined>;
-  createUser(user: InsertUser & { name: string; seatNumber: number; role: string }): Promise<User>;
-  
+  createUser(user: any): Promise<User>;
+
   // Whitelist
   getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined>;
   createAllowedStudent(student: Omit<AllowedStudent, "id">): Promise<AllowedStudent>;
@@ -37,7 +35,7 @@ export interface IStorage {
   getSchedules(): Promise<Schedule[]>;
   getSchedule(id: number): Promise<Schedule | undefined>;
   createSchedule(schedule: Omit<Schedule, "id">): Promise<Schedule>;
-  
+
   // Reservations
   getReservationsBySchedule(scheduleId: number): Promise<Reservation[]>;
   getReservationCount(scheduleId: number): Promise<number>;
@@ -46,6 +44,9 @@ export interface IStorage {
   getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]>;
   updateReservation(id: number, update: Partial<Reservation>): Promise<Reservation>;
   checkUserReserved(userId: number, scheduleId: number): Promise<boolean>;
+  getReservation(id: number): Promise<Reservation | null>;
+  deleteReservation(id: number): Promise<void>;
+  getDailyOnsiteCount(userId: number, date: Date): Promise<number>;
 
   sessionStore: session.Store;
 }
@@ -60,7 +61,10 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Auth
+  // =================================================================
+  // 🔐 [인증 관련]
+  // =================================================================
+
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -71,12 +75,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(user: InsertUser & { name: string; seatNumber: number; role: string }): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
+  // ✅ [수정 핵심] username이 null이 되지 않도록 명시적으로 매핑합니다.
+  async createUser(user: any): Promise<User> {
+    const [newUser] = await db.insert(users).values({
+      username: user.username || user.phoneNumber, // 아이디가 없으면 전화번호를 아이디로 사용
+      password: user.password,
+      phoneNumber: user.phoneNumber,
+      name: user.name,
+      seatNumber: user.seatNumber ? user.seatNumber.toString() : "0",
+      role: user.role || "student",
+    }).returning();
     return newUser;
   }
 
-  // Whitelist (using local PostgreSQL)
+  // =================================================================
+  // 📋 [명단 관리 (Whitelist)]
+  // =================================================================
+
   async getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined> {
     const [student] = await db.select().from(allowedStudents).where(eq(allowedStudents.phoneNumber, phoneNumber));
     return student;
@@ -96,7 +111,10 @@ export class DatabaseStorage implements IStorage {
     return result.count;
   }
 
-  // Schedules
+  // =================================================================
+  // ⏰ [스케줄 관리]
+  // =================================================================
+
   async getSchedules(): Promise<Schedule[]> {
     return await db.select().from(schedules);
   }
@@ -111,13 +129,18 @@ export class DatabaseStorage implements IStorage {
     return newSchedule;
   }
 
-  // Reservations
+  // =================================================================
+  // 📅 [예약 관련]
+  // =================================================================
+
   async getReservationsBySchedule(scheduleId: number): Promise<Reservation[]> {
     return await db.select().from(reservations).where(eq(reservations.scheduleId, scheduleId));
   }
 
   async getReservationCount(scheduleId: number): Promise<number> {
-    const [result] = await db.select({ count: count() }).from(reservations).where(and(eq(reservations.scheduleId, scheduleId), eq(reservations.type, 'onsite')));
+    const [result] = await db.select({ count: count() })
+      .from(reservations)
+      .where(and(eq(reservations.scheduleId, scheduleId), eq(reservations.type, 'onsite')));
     return result.count;
   }
 
@@ -138,15 +161,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReservation(reservation: Omit<Reservation, "id" | "createdAt">): Promise<Reservation> {
-    console.log("Storage createReservation - input:", JSON.stringify(reservation, null, 2));
-    try {
-      const [newReservation] = await db.insert(reservations).values(reservation).returning();
-      console.log("Storage createReservation - success:", newReservation);
-      return newReservation;
-    } catch (err) {
-      console.error("Storage createReservation - error:", err);
-      throw err;
-    }
+    const [newReservation] = await db.insert(reservations).values(reservation).returning();
+    return newReservation;
   }
 
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
@@ -171,10 +187,9 @@ export class DatabaseStorage implements IStorage {
     .where(eq(reservations.userId, userId))
     .orderBy(desc(reservations.createdAt));
 
-    // Cast seatNumber to number to match type (it might be null in DB but strictly typed in join)
     return result.map(r => ({ 
       ...r, 
-      seatNumber: r.seatNumber || 0,
+      seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
       day: r.day || "온라인",
       period: r.period || 0
     }));
@@ -201,21 +216,9 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(schedules, eq(reservations.scheduleId, schedules.id));
 
     const result = await query;
-    const filtered = result.filter(r => {
-      if (r.type === 'onsite') {
-        if (day && r.day !== day) return false;
-        if (period && r.period !== period) return false;
-      } else if (day || period) {
-        // Online questions only show up when no specific day/period filter is active
-        // or we could decide to show them in a special "Online" view
-        return false; 
-      }
-      return true;
-    });
-
-    return filtered.map(r => ({ 
+    return result.map(r => ({ 
       ...r, 
-      seatNumber: r.seatNumber || 0,
+      seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
       day: r.day || "온라인",
       period: r.period || 0
     }));
