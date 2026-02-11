@@ -20,9 +20,9 @@ const { Pool } = pg;
 // 2. [설정] 복잡한 중계소 대신 "직통 연결" 사용
 // 이 방식은 Tenant 에러가 구조적으로 불가능합니다.
 const connectionConfig = {
-  host: "aws-0-ap-northeast-2.pooler.supabase.com", // IPv4 전용
-  port: 6543, // ⚠️ Pooler는 6543 포트
-  user: "postgres.zaojtbdaywtggzjpagrd",
+  host: "15.164.120.176",
+  port: 5432,
+  user: "postgres",
   password: "VstYBLTUxGOOI18u",
   database: "postgres",
   ssl: { 
