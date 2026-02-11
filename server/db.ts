@@ -20,13 +20,15 @@ import { createClient } from "@supabase/supabase-js";
 
 const { Pool } = pg;
 
-// ✅ [수정 완료] db... (X) -> aws-1... (O)
-// 회원님이 찾으신 "정답 주소"를 여기에 넣었습니다.
+// ✅ [최종 설정] 모든 정보가 완벽합니다.
 const connectionConfig = {
-  host: "aws-1-ap-northeast-2.pooler.supabase.com", // ⭐ 여기가 aws-1 입니다
+  host: "aws-1-ap-northeast-2.pooler.supabase.com", // 정답 주소 (aws-1)
   port: 5432, 
-  user: "postgres.zaojtbdaywtggzjpagrd", // 프로젝트 ID가 포함된 유저명
-  password: "VstYBLTUxGOOI18u", // 비밀번호
+  user: "postgres.zaojtbdaywtggzjpagrd", // 풀네임 아이디
+
+  // 🔑 방금 보내주신 새 비밀번호를 적용했습니다!
+  password: "FlEBCClmWILabdJx", 
+
   database: "postgres",
   ssl: { 
     rejectUnauthorized: false 
@@ -35,7 +37,7 @@ const connectionConfig = {
 };
 
 console.log("---------------------------------------------");
-console.log("🚀 [DB 연결 시작] 정답 주소(aws-1)로 접속합니다.");
+console.log("🚀 [DB 연결 시작] 새 비밀번호로 접속을 시도합니다.");
 console.log(`🎯 Host: ${connectionConfig.host}`);
 console.log("---------------------------------------------");
 
