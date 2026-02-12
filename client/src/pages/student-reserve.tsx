@@ -18,7 +18,7 @@ export default function StudentReserve() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offline" | "online">("offline");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [showSuccessView, setShowSuccessView] = useState(false); // 완료 화면 상태
+  const [showSuccessView, setShowSuccessView] = useState(false);
   const [questionContent, setQuestionContent] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -36,7 +36,6 @@ export default function StudentReserve() {
   const DAILY_LIMIT = 3; 
   const isLimitReached = todayOfflineCount >= DAILY_LIMIT;
 
-  // 상태 초기화 및 모달 닫기 함수
   const handleClose = () => {
     setIsDialogOpen(false);
     setShowSuccessView(false);
@@ -50,19 +49,30 @@ export default function StudentReserve() {
     mutationFn: async () => {
       let photoUrl = "";
 
+      // 이미지 업로드 처리
       if (selectedImage) {
         const formData = new FormData();
-        formData.append("photo", selectedImage);
+        // ✨ 수정 포인트: 서버가 인식할 수 있도록 'photo' -> 'file'로 변경 ✨
+        formData.append("file", selectedImage); 
+
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
+
+        // 업로드 실패 시 에러 처리 (서버 에러 방지)
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || "이미지 업로드에 실패했습니다.");
+        }
+
         const data = await res.json();
         photoUrl = data.url;
       }
 
       const finalContent = questionContent.trim() === "" ? "(내용 없음)" : questionContent;
 
+      // 예약 요청
       await apiRequest("POST", "/api/reservations", {
         type: activeTab, 
         content: finalContent,
@@ -71,10 +81,10 @@ export default function StudentReserve() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-      // ✨ [수정됨] 온라인/현장 구분 없이 무조건 완료 화면 보여주기 ✨
       setShowSuccessView(true);
     },
     onError: (error: Error) => {
+      console.error("Reservation Error:", error);
       toast({ 
         title: "예약 실패", 
         description: error.message, 
@@ -188,7 +198,7 @@ export default function StudentReserve() {
         }}>
           <DialogContent className="sm:max-w-md bg-white rounded-2xl overflow-hidden">
             {showSuccessView ? (
-              // ✨ [통합 완료 화면] ✨
+              // 완료 화면
               <div className="flex flex-col items-center justify-center py-10 text-center space-y-6 animate-in fade-in zoom-in duration-300">
                 <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-2 ring-8 ${
                   activeTab === 'offline' 
@@ -220,7 +230,7 @@ export default function StudentReserve() {
                 </div>
               </div>
             ) : (
-              // [질문 작성 화면]
+              // 질문 작성 화면
               <>
                 <DialogHeader>
                   <DialogTitle className="text-center text-xl font-bold flex flex-col items-center gap-2">
