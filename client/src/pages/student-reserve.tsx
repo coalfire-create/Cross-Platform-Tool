@@ -1,174 +1,262 @@
-import { StudentLayout } from "@/components/layout";
-import { useSchedules } from "@/hooks/use-schedules";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { ChevronLeft, Lock, Check, Globe, MapPin } from "lucide-react";
 import { useState } from "react";
-import { ReservationModal } from "@/components/ui/reservation-modal";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Reservation } from "@shared/schema";
+import { StudentLayout } from "@/components/layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useLocation } from "wouter";
-
-const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일"];
-const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { MapPin, Globe, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { startOfDay, isSameDay } from "date-fns";
 
 export default function StudentReserve() {
-  const { data: schedules, isLoading } = useSchedules();
-  const [selectedSlot, setSelectedSlot] = useState<{ id: number | null; day: string; period: number | null; type: 'onsite' | 'online' } | null>(null);
-  const [filterDay, setFilterDay] = useState<string>("월요일");
-  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"offline" | "online">("offline");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [questionContent, setQuestionContent] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // Helper to find schedule for a specific slot
-  const getSchedule = (day: string, period: number) => {
-    const found = schedules?.find(s => s.dayOfWeek === day && s.periodNumber === period);
-    if (!found && schedules && schedules.length > 0) {
-      console.warn(`Schedule not found for ${day} ${period}교시`);
+  // 내 예약 내역 가져오기 (하루 제한 확인용)
+  const { data: reservations } = useQuery<Reservation[]>({
+    queryKey: ["/api/reservations"],
+  });
+
+  // 오늘 현장 질문 횟수 계산
+  const todayOfflineCount = reservations?.filter(r => 
+    r.type === 'offline' && isSameDay(new Date(r.createdAt || new Date()), new Date())
+  ).length || 0;
+
+  const DAILY_LIMIT = 3; // 하루 제한 횟수
+  const isLimitReached = todayOfflineCount >= DAILY_LIMIT;
+
+  // 예약 생성 Mutation
+  const createReservationMutation = useMutation({
+    mutationFn: async () => {
+      let photoUrl = "";
+
+      // 이미지 업로드 처리
+      if (selectedImage) {
+        const formData = new FormData();
+        formData.append("photo", selectedImage);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        photoUrl = data.url;
+      }
+
+      // 예약 생성 요청 (scheduleId 없이 type으로 구분)
+      await apiRequest("POST", "/api/reservations", {
+        type: activeTab, // 'offline' or 'online'
+        content: questionContent,
+        photoUrls: photoUrl ? [photoUrl] : [],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      toast({ title: "예약 완료", description: "질문이 성공적으로 등록되었습니다." });
+      setIsDialogOpen(false);
+      setQuestionContent("");
+      setSelectedImage(null);
+      setImagePreview(null);
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "예약 실패", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
     }
-    return found;
+  };
+
+  // 공통 질문 업로드 카드 컴포넌트
+  const QuestionCard = ({ type }: { type: "offline" | "online" }) => {
+    const isOffline = type === "offline";
+    const isDisabled = isOffline && isLimitReached;
+
+    return (
+      <Card className="border-2 border-dashed border-gray-200 shadow-none bg-gray-50/50">
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+          <div className={`p-4 rounded-full ${isOffline ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
+            {isOffline ? <MapPin className="w-8 h-8" /> : <Globe className="w-8 h-8" />}
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold">
+              {isOffline ? "현장 질문하기" : "온라인 질문하기"}
+            </h3>
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+              {isOffline 
+                ? `선생님께 직접 찾아가서 질문합니다.\n(하루 최대 ${DAILY_LIMIT}회 가능)` 
+                : "시간 제한 없이 언제든 질문을 남길 수 있습니다."}
+            </p>
+          </div>
+
+          {isOffline && (
+             <div className={`text-sm font-bold px-3 py-1 rounded-full ${isLimitReached ? "bg-red-100 text-red-600" : "bg-gray-200 text-gray-700"}`}>
+               오늘 남은 횟수: {Math.max(0, DAILY_LIMIT - todayOfflineCount)} / {DAILY_LIMIT}회
+             </div>
+          )}
+
+          <Button 
+            onClick={() => setIsDialogOpen(true)}
+            disabled={isDisabled}
+            className={`mt-4 px-8 py-6 text-lg font-bold rounded-full shadow-lg transition-transform active:scale-95 ${
+              isOffline 
+                ? "bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300" 
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {isDisabled ? "금일 한도 초과" : "질문 작성하기"}
+          </Button>
+
+          {isDisabled && (
+            <p className="text-red-500 text-xs font-medium mt-2 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              오늘은 더 이상 현장 질문을 예약할 수 없습니다.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setLocation("/")}
-            className="rounded-full hover:bg-primary/5"
-          >
-            <ChevronLeft className="w-6 h-6 text-primary" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold font-display text-primary">질문하기</h1>
-            <p className="text-muted-foreground text-sm">현장 질문 또는 온라인 질문을 선택하세요.</p>
-          </div>
+        {/* 헤더 */}
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight">질문하기</h2>
+          <p className="text-muted-foreground">
+            현장 질문 또는 온라인 질문을 선택하세요.
+          </p>
         </div>
 
-        <Tabs defaultValue="onsite" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="onsite" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
+        {/* 탭 및 콘텐츠 */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gray-100 rounded-xl mb-6">
+            <TabsTrigger 
+              value="offline"
+              className="rounded-lg text-base font-medium data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-sm transition-all"
+            >
+              <MapPin className="w-4 h-4 mr-2" />
               현장 질문
             </TabsTrigger>
-            <TabsTrigger value="online" className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
+            <TabsTrigger 
+              value="online" 
+              className="rounded-lg text-base font-medium data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+            >
+              <Globe className="w-4 h-4 mr-2" />
               온라인 질문
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="onsite" className="space-y-6">
-            {/* Day Filter */}
-            <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-              {DAYS.map((day) => (
-                <button
-                  key={day}
-                  onClick={() => setFilterDay(day)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-                    filterDay === day
-                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                      : "bg-white text-muted-foreground border border-border hover:bg-gray-50"
-                  )}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
-
-            {/* Slots Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
-                ))
-              ) : (
-                PERIODS.map((period) => {
-                  const schedule = getSchedule(filterDay, period);
-                  const isFull = schedule && schedule.currentCount >= schedule.capacity;
-                  const isReserved = schedule?.isReservedByUser;
-                  const available = schedule ? schedule.capacity - schedule.currentCount : 4;
-                  
-                  return (
-                    <Card 
-                      key={period}
-                      onClick={() => {
-                        console.log("Slot clicked:", { schedule, isFull, isReserved, filterDay, period });
-                        if (schedule && !isFull && !isReserved) {
-                          setSelectedSlot({ id: schedule.id, day: filterDay, period, type: 'onsite' });
-                        }
-                      }}
-                      className={cn(
-                        "relative overflow-hidden border-2 transition-all duration-200 group cursor-pointer h-32 flex flex-col justify-between p-4",
-                        isReserved 
-                          ? "bg-emerald-50 border-emerald-200 cursor-default" 
-                          : isFull
-                            ? "bg-gray-50 border-gray-100 opacity-80 cursor-not-allowed"
-                            : "bg-white border-transparent hover:border-primary/50 hover:shadow-lg hover:-translate-y-1"
-                      )}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-muted-foreground">{period}교시</span>
-                        {isReserved && <div className="bg-emerald-100 p-1 rounded-full"><Check className="w-3 h-3 text-emerald-600" /></div>}
-                        {isFull && !isReserved && <Lock className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-
-                      <div className="text-center">
-                        {isReserved ? (
-                          <span className="text-emerald-700 font-bold text-sm">예약 완료</span>
-                        ) : isFull ? (
-                          <span className="text-muted-foreground font-medium text-sm">만석</span>
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <span className="text-2xl font-bold text-primary">{available}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">남은 자리</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {!isReserved && (
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div 
-                            className={cn("h-full rounded-full", isFull ? "bg-red-400" : "bg-primary")} 
-                            style={{ width: `${schedule ? (schedule.currentCount / schedule.capacity) * 100 : 0}%` }}
-                          />
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground text-center">※ 현장 질문은 하루 최대 3회로 제한됩니다.</p>
+          <TabsContent value="offline" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <QuestionCard type="offline" />
           </TabsContent>
 
-          <TabsContent value="online">
-            <Card 
-              onClick={() => setSelectedSlot({ id: null, day: "오늘", period: null, type: 'online' })}
-              className="p-8 border-2 border-dashed border-primary/20 hover:border-primary/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-4 bg-primary/5"
-            >
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <Globe className="w-8 h-8 text-primary" />
-              </div>
-              <div className="text-center">
-                <h3 className="font-bold text-lg">온라인 질문하기</h3>
-                <p className="text-sm text-muted-foreground mt-1">시간 제한 없이 언제든 질문을 남길 수 있습니다.</p>
-              </div>
-              <Button className="rounded-xl">질문 사진 업로드</Button>
-            </Card>
+          <TabsContent value="online" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <QuestionCard type="online" />
           </TabsContent>
         </Tabs>
-      </div>
 
-      {selectedSlot && (
-        <ReservationModal 
-          scheduleId={selectedSlot.id} 
-          day={selectedSlot.day} 
-          period={selectedSlot.period || 0} 
-          type={selectedSlot.type}
-          onClose={() => setSelectedSlot(null)} 
-        />
-      )}
+        {/* 질문 작성 모달 (현장/온라인 공용) */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-white rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl font-bold flex flex-col items-center gap-2">
+                {activeTab === 'offline' ? (
+                   <span className="text-orange-600 flex items-center gap-2">
+                     <MapPin className="w-5 h-5" /> 현장 질문 작성
+                   </span>
+                ) : (
+                   <span className="text-blue-600 flex items-center gap-2">
+                     <Globe className="w-5 h-5" /> 온라인 질문 작성
+                   </span>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                  질문 내용
+                </label>
+                <Textarea
+                  placeholder="질문하고 싶은 내용을 간단히 적어주세요."
+                  value={questionContent}
+                  onChange={(e) => setQuestionContent(e.target.value)}
+                  className="min-h-[120px] resize-none border-gray-200 focus:border-primary rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">사진 첨부 (선택)</label>
+                <div 
+                  className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors h-40 relative overflow-hidden"
+                  onClick={() => document.getElementById('photo-upload')?.click()}
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center text-gray-400">
+                      <Camera className="w-8 h-8 mb-2" />
+                      <span className="text-xs">클릭하여 사진 업로드</span>
+                    </div>
+                  )}
+                  <input 
+                    id="photo-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleImageSelect}
+                  />
+                  {imagePreview && (
+                    <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70" onClick={(e) => {
+                      e.stopPropagation();
+                      setImagePreview(null);
+                      setSelectedImage(null);
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => createReservationMutation.mutate()}
+                disabled={!questionContent || createReservationMutation.isPending}
+                className={`w-full h-12 text-lg font-bold rounded-xl ${
+                   activeTab === 'offline' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {createReservationMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "예약 완료"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </StudentLayout>
   );
 }
