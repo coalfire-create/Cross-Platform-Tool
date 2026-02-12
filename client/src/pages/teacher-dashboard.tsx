@@ -1,379 +1,270 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Reservation } from "@shared/schema";
 import { AdminLayout } from "@/components/layout";
-import { useReservations } from "@/hooks/use-reservations";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
-import { Filter, CheckCircle, MessageSquare, ExternalLink, Globe, MapPin, ImageIcon, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-
-const DAYS = ["월요일", "화요일", "수요일", "목요일", "금요일", "온라인"];
-const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Loader2, 
+  MapPin, 
+  Globe, 
+  Clock, 
+  CheckCircle2, 
+  MessageCircle, 
+  ImageIcon,
+  XCircle 
+} from "lucide-react";
+import { useState } from "react";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function TeacherDashboard() {
-  const { allReservations } = useReservations();
-  const [filterDay, setFilterDay] = useState<string>("월요일");
-  const [filterPeriod, setFilterPeriod] = useState<string>("1");
-  const [selectedResId, setSelectedResId] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("");
+  const { toast } = useToast();
+  const [feedback, setFeedback] = useState<{ [key: number]: string }>({});
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const onsiteReservations = allReservations.data?.filter(res => {
-    return res.type === 'onsite' && res.day === filterDay && res.period === parseInt(filterPeriod);
+  // 모든 예약 불러오기 (학생들이 올린 질문)
+  const { data: reservations, isLoading } = useQuery<Reservation[]>({
+    queryKey: ["/api/reservations/list"],
   });
 
-  const onlineReservations = allReservations.data?.filter(res => {
-    return res.type === 'online';
+  // 답변/확인 처리 Mutation
+  const respondMutation = useMutation({
+    mutationFn: async ({ id, feedbackText }: { id: number; feedbackText: string }) => {
+      await apiRequest("PATCH", `/api/reservations/${id}`, {
+        status: "answered",
+        teacherFeedback: feedbackText,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations/list"] });
+      toast({ title: "처리 완료", description: "학생에게 답변이 전달되었습니다." });
+      setFeedback({});
+    },
+    onError: (error: Error) => {
+      toast({ title: "오류 발생", description: error.message, variant: "destructive" });
+    },
   });
 
-  const handleUpdateStatus = async (id: number, status: string, teacherFeedback?: string) => {
-    try {
-      await apiRequest("PATCH", `/api/reservations/${id}`, { status, teacherFeedback });
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-      setSelectedResId(null);
-      setFeedback("");
-    } catch (err) {
-      alert("업데이트에 실패했습니다.");
-    }
-  };
+  // 예약 취소/반려 Mutation
+  const cancelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("PATCH", `/api/reservations/${id}`, {
+        status: "cancelled",
+        teacherFeedback: "선생님에 의해 취소되었습니다.",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations/list"] });
+      toast({ title: "예약 취소", description: "질문이 취소 처리되었습니다." });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex justify-center items-center h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // 대기 중인 질문 필터링
+  const pendingReservations = reservations?.filter(r => r.status === 'pending') || [];
+  // 완료된 질문 필터링
+  const completedReservations = reservations?.filter(r => r.status === 'answered') || [];
 
   return (
     <AdminLayout>
-      <div className="space-y-12">
-        {/* Onsite Section */}
-        <section className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <MapPin className="w-5 h-5 text-blue-600" />
+      <div className="space-y-8 max-w-5xl mx-auto">
+
+        {/* 상단 통계 카드 */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="bg-white shadow-sm border-blue-100">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">대기 중인 질문</CardTitle>
+              <Clock className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{pendingReservations.length}건</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm border-green-100">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">오늘 처리 완료</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{completedReservations.length}건</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-sm border-orange-100">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">현장 질문 대기</CardTitle>
+              <MapPin className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                {pendingReservations.filter(r => r.type === 'onsite').length}건
               </div>
-              <h2 className="text-2xl font-bold font-display text-primary">현장 질문 관리</h2>
-            </div>
-            
-            <div className="flex gap-2">
-              <Select value={filterDay} onValueChange={setFilterDay}>
-                <SelectTrigger className="w-[140px] rounded-xl border-gray-200 bg-white shadow-sm">
-                  <SelectValue placeholder="요일" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS.filter(d => d !== "온라인").map(day => <SelectItem key={day} value={day}>{day}</SelectItem>)}
-                </SelectContent>
-              </Select>
-
-              <Select value={filterPeriod} onValueChange={setFilterPeriod}>
-                <SelectTrigger className="w-[120px] rounded-xl border-gray-200 bg-white shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-3 h-3 text-muted-foreground" />
-                    <SelectValue placeholder="교시" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {PERIODS.map(p => <SelectItem key={p} value={p.toString()}>{p}교시</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {allReservations.isLoading ? (
-               Array.from({length: 4}).map((_, i) => <div key={i} className="h-48 bg-gray-100 rounded-2xl animate-pulse" />)
-            ) : onsiteReservations && onsiteReservations.length > 0 ? (
-              onsiteReservations.map((res) => (
-                <ReservationCard key={res.id} res={res} onUpdateStatus={handleUpdateStatus} selectedResId={selectedResId} setSelectedResId={setSelectedResId} feedback={feedback} setFeedback={setFeedback} />
-              ))
-            ) : (
-              <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground bg-gray-50 rounded-2xl border-2 border-dashed">
-                <p>해당 시간대에 예약된 현장 질문이 없습니다.</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <hr className="border-gray-100" />
-
-        {/* Online Section */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Globe className="w-5 h-5 text-purple-600" />
-            </div>
-            <h2 className="text-2xl font-bold font-display text-primary">온라인 질문 관리</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {allReservations.isLoading ? (
-               Array.from({length: 4}).map((_, i) => <div key={i} className="h-48 bg-gray-100 rounded-2xl animate-pulse" />)
-            ) : onlineReservations && onlineReservations.length > 0 ? (
-              onlineReservations.map((res) => (
-                <ReservationCard key={res.id} res={res} onUpdateStatus={handleUpdateStatus} selectedResId={selectedResId} setSelectedResId={setSelectedResId} feedback={feedback} setFeedback={setFeedback} />
-              ))
-            ) : (
-              <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted-foreground bg-gray-50 rounded-2xl border-2 border-dashed">
-                <p>등록된 온라인 질문이 없습니다.</p>
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
-    </AdminLayout>
-  );
-}
-
-function ReservationCard({ res, onUpdateStatus, selectedResId, setSelectedResId, feedback, setFeedback }: any) {
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
-  
-  const photoUrls = res.photoUrls || [];
-  const hasPhotos = photoUrls.length > 0;
-  const currentPhoto = photoUrls[currentPhotoIndex];
-  const hasImageError = imageErrors.has(currentPhotoIndex);
-
-  const handleImageError = (index: number) => {
-    setImageErrors(prev => new Set(prev).add(index));
-  };
-
-  const nextPhoto = () => {
-    setCurrentPhotoIndex(prev => (prev + 1) % photoUrls.length);
-  };
-
-  const prevPhoto = () => {
-    setCurrentPhotoIndex(prev => (prev - 1 + photoUrls.length) % photoUrls.length);
-  };
-  
-  return (
-    <Card className={cn(
-      "rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 border-2",
-      res.status === 'confirmed' || res.status === 'answered' ? "border-emerald-100 bg-emerald-50/10" : "border-border/60"
-    )}>
-      <CardContent className="p-0">
-        {hasPhotos && (
-          <div className="relative h-48 bg-secondary/30 group">
-            {hasImageError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-muted-foreground">
-                <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
-                <span className="text-xs">이미지를 불러올 수 없습니다</span>
-                <span className="text-xs opacity-70">(HEIC 형식 미지원)</span>
-              </div>
-            ) : (
-              <img 
-                src={currentPhoto} 
-                alt={res.studentName} 
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                onError={() => handleImageError(currentPhotoIndex)}
-              />
-            )}
-            <div className="absolute top-2 right-2 flex gap-2">
-              <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-primary shadow-sm">
-                좌석 {res.seatNumber}
-              </div>
-              {photoUrls.length > 1 && (
-                <div className="bg-black/50 backdrop-blur px-2 py-1 rounded-lg text-xs font-medium text-white">
-                  {currentPhotoIndex + 1}/{photoUrls.length}
-                </div>
-              )}
-            </div>
-            {photoUrls.length > 1 && (
-              <>
-                <button 
-                  onClick={prevPhoto}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={nextPhoto}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </>
-            )}
-            <a 
-              href={currentPhoto} 
-              target="_blank" 
-              rel="noreferrer"
-              className="absolute bottom-2 right-2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        )}
-        <div className="p-4">
-          {!hasPhotos && (
-            <div className="flex items-center gap-2 mb-2">
-              <div className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold">
-                좌석 {res.seatNumber}
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between items-start">
-            <h3 className="font-bold text-lg text-foreground truncate">{res.studentName}</h3>
-            {res.status !== 'pending' && (
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-            )}
-          </div>
-          {res.content && (
-            <p className="text-sm text-muted-foreground mt-2 line-clamp-2 bg-muted/50 p-2 rounded-lg italic">
-              "{res.content}"
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
-              {res.day}
-            </span>
-            {res.type === 'onsite' && (
-              <>
-                <span>•</span>
-                <span>{res.period}교시</span>
-              </>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-      <CardFooter className="px-4 pb-4 pt-0 flex-col gap-2">
-        {hasPhotos && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button 
-                className="w-full rounded-xl"
-                variant="outline"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                상세보기
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto sm:max-w-xl">
-              <DialogHeader>
-                <DialogTitle>{res.studentName} 학생 질문 ({res.seatNumber}번)</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    사진 ({photoUrls.length}장)
-                  </div>
-                  <div className="space-y-2">
-                    {photoUrls.map((url: string, idx: number) => (
-                      <div key={idx} className="w-full rounded-xl overflow-hidden border bg-muted">
-                        {imageErrors.has(idx) ? (
-                          <div className="w-full aspect-video flex flex-col items-center justify-center text-muted-foreground">
-                            <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
-                            <span className="text-sm">이미지를 불러올 수 없습니다</span>
-                            <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1">
-                              원본 파일 다운로드
-                            </a>
+
+        {/* 대기 중인 질문 리스트 */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            🚀 답변이 필요한 질문 ({pendingReservations.length})
+          </h2>
+
+          {pendingReservations.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-xl border border-dashed text-muted-foreground">
+              대기 중인 질문이 없습니다. 잠시 휴식을 취하세요! ☕️
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {pendingReservations.map((res) => (
+                <Card key={res.id} className="overflow-hidden border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+
+                      {/* 1. 질문 정보 섹션 */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {/* 질문 타입 뱃지 */}
+                            <Badge variant="outline" className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${
+                              res.type === 'onsite' 
+                                ? "bg-orange-50 text-orange-600 border-orange-200" 
+                                : "bg-blue-50 text-blue-600 border-blue-200"
+                            }`}>
+                              {res.type === 'onsite' ? <MapPin className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                              {res.type === 'onsite' ? "현장 질문" : "온라인 질문"}
+                            </Badge>
+                            <span className="text-sm text-gray-400">
+                              {format(new Date(res.createdAt || new Date()), "p", { locale: ko })} 요청
+                            </span>
                           </div>
-                        ) : (
-                          <a href={url} target="_blank" rel="noreferrer">
-                            <img 
-                              src={url} 
-                              className="w-full object-contain max-h-[60vh]" 
-                              alt={`Question ${idx + 1}`} 
-                              onError={() => handleImageError(idx)}
-                            />
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {res.content && (
-                  <div className="bg-muted p-3 rounded-xl text-sm">
-                    <strong>질문 내용:</strong> {res.content}
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                  <span>{res.day} {res.type === 'onsite' ? `${res.period}교시` : ''}</span>
-                  <span>{new Date(res.createdAt).toLocaleString('ko-KR')}</span>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-        {res.type === 'onsite' ? (
-          <Button 
-            className="w-full rounded-xl" 
-            variant={res.status === 'confirmed' ? "outline" : "default"}
-            disabled={res.status === 'confirmed'}
-            onClick={() => onUpdateStatus(res.id, 'confirmed')}
-          >
-            {res.status === 'confirmed' ? "확인됨" : "확인 완료"}
-          </Button>
-        ) : (
-          <Dialog open={selectedResId === res.id} onOpenChange={(open) => !open && setSelectedResId(null)}>
-            <DialogTrigger asChild>
-              <Button 
-                className="w-full rounded-xl"
-                variant={res.status === 'answered' ? "outline" : "default"}
-                onClick={() => {
-                  setSelectedResId(res.id);
-                  setFeedback(res.teacherFeedback || "");
-                }}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                {res.status === 'answered' ? "답변 수정" : "답변 달기"}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{res.studentName} 학생 질문 답변</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                {hasPhotos && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      사진 ({photoUrls.length}장)
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {photoUrls.map((url: string, idx: number) => (
-                        <div key={idx} className="aspect-video rounded-xl overflow-hidden border bg-muted">
-                          {imageErrors.has(idx) ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                              <ImageIcon className="w-8 h-8 mb-1 opacity-50" />
-                              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
-                                다운로드
-                              </a>
-                            </div>
+
+                          {/* 학생 정보 */}
+                          <div className="text-right">
+                            <span className="text-lg font-bold mr-2">{res.studentName} 학생</span>
+                            <Badge variant="secondary" className="text-xs">좌석 {res.seatNumber}</Badge>
+                          </div>
+                        </div>
+
+                        {/* 질문 내용 */}
+                        <div className="bg-gray-50 p-4 rounded-xl text-gray-800 leading-relaxed border border-gray-100">
+                          {res.content === "(내용 없음)" || !res.content ? (
+                            <span className="text-gray-400 italic">내용 없음 (사진을 확인하세요)</span>
                           ) : (
-                            <a href={url} target="_blank" rel="noreferrer">
-                              <img 
-                                src={url} 
-                                className="w-full h-full object-cover hover:opacity-80 transition-opacity" 
-                                alt={`Question ${idx + 1}`} 
-                                onError={() => handleImageError(idx)}
-                              />
-                            </a>
+                            res.content
                           )}
                         </div>
-                      ))}
+
+                        {/* 사진 보기 버튼 */}
+                        {res.photoUrls && res.photoUrls.length > 0 && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-2 text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
+                                <ImageIcon className="w-4 h-4" /> 사진 확인하기
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl bg-transparent border-none shadow-none p-0">
+                              <img 
+                                src={res.photoUrls[0]} 
+                                alt="질문 첨부 사진" 
+                                className="w-full h-auto rounded-lg shadow-2xl"
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+
+                      {/* 2. 선생님 액션 섹션 (여기가 핵심!) */}
+                      <div className="md:w-80 flex flex-col gap-3 border-l pl-0 md:pl-6 md:border-l-gray-100">
+
+                        {res.type === 'onsite' ? (
+                          // 🟧 [현장 질문]일 때: 확인 버튼만 표시
+                          <div className="h-full flex flex-col justify-center gap-4">
+                            <div className="bg-orange-50 p-4 rounded-lg text-orange-800 text-sm text-center font-medium">
+                              학생이 자리로 찾아오거나<br/>
+                              선생님이 방문하여 지도하는 질문입니다.
+                            </div>
+                            <Button 
+                              onClick={() => respondMutation.mutate({ 
+                                id: res.id, 
+                                feedbackText: "현장 질문 확인 및 지도 완료" // 자동 입력될 텍스트
+                              })}
+                              disabled={respondMutation.isPending}
+                              className="w-full py-6 text-lg font-bold bg-orange-500 hover:bg-orange-600 shadow-orange-200 shadow-lg"
+                            >
+                              {respondMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "확인 완료 (지도 끝)"}
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              onClick={() => cancelMutation.mutate(res.id)}
+                              className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" /> 예약 취소시키기
+                            </Button>
+                          </div>
+                        ) : (
+                          // 🟦 [온라인 질문]일 때: 답변 입력창 표시
+                          <div className="flex flex-col gap-3 h-full">
+                            <label className="text-sm font-bold flex items-center gap-2 text-blue-700">
+                              <MessageCircle className="w-4 h-4" /> 답변 작성
+                            </label>
+                            <Textarea
+                              placeholder="학생에게 보낼 답변을 입력하세요..."
+                              value={feedback[res.id] || ""}
+                              onChange={(e) => setFeedback({ ...feedback, [res.id]: e.target.value })}
+                              className="flex-1 min-h-[100px] resize-none border-blue-100 focus:border-blue-400"
+                            />
+                            <div className="flex gap-2 mt-auto">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => cancelMutation.mutate(res.id)}
+                                className="flex-1 text-gray-500"
+                              >
+                                반려
+                              </Button>
+                              <Button 
+                                onClick={() => respondMutation.mutate({ 
+                                  id: res.id, 
+                                  feedbackText: feedback[res.id] || "답변 완료" 
+                                })}
+                                disabled={respondMutation.isPending || !feedback[res.id]}
+                                className="flex-[2] font-bold bg-blue-600 hover:bg-blue-700"
+                              >
+                                {respondMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "답변 전송"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                     </div>
-                  </div>
-                )}
-                {res.content && (
-                  <div className="bg-muted p-3 rounded-xl text-sm">
-                    <strong>질문 내용:</strong> {res.content}
-                  </div>
-                )}
-                <Textarea 
-                  placeholder="답변을 입력해주세요..." 
-                  className="min-h-[150px] rounded-xl"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                />
-              </div>
-              <DialogFooter>
-                <Button 
-                  className="w-full rounded-xl"
-                  onClick={() => onUpdateStatus(res.id, 'answered', feedback)}
-                >
-                  답변 저장
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </CardFooter>
-    </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
   );
 }
