@@ -1,5 +1,5 @@
 # Project Overview
-- **Project Name:** 이강학웜
+- **Project Name:** 올빼미Q
 - **Goal:** Build a cross-platform mobile app (iOS & Android) using **React Native (Expo)**.
 - **Target Audience:** Students (Users) and Teachers (Admins).
 

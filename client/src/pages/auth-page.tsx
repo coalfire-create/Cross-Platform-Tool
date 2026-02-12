@@ -42,7 +42,7 @@ export default function AuthPage() {
             <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
               <GraduationCap className="w-7 h-7" />
             </div>
-            <span className="text-xl font-bold font-display tracking-tight">이강학원</span>
+            <span className="text-xl font-bold font-display tracking-tight">올빼미Q</span>
           </div>
           <h1 className="text-2xl font-display font-bold mb-2">
             질문 예약 시스템

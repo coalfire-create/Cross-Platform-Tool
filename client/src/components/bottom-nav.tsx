@@ -57,7 +57,7 @@ export function DesktopNav() {
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold font-display text-xl">
           L
         </div>
-        <h1 className="text-xl font-bold text-primary tracking-tight">이강학웜</h1>
+        <h1 className="text-xl font-bold text-primary tracking-tight">올빼미Q</h1>
       </div>
 
       <nav className="flex items-center gap-6">
