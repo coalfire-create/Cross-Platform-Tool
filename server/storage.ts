@@ -183,7 +183,7 @@ export class DatabaseStorage implements IStorage {
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
     .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
-    .where(eq(reservations.userId, userId)) // 👈 [중요] 반드시 내 아이디와 같아야 함
+    .where(eq(reservations.userId, userId)) // 👈 [핵심] 로그인한 유저 ID와 일치하는 것만!
     .orderBy(desc(reservations.createdAt));
 
     return result.map(r => ({ 
@@ -213,7 +213,7 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 [중요] INNER -> LEFT 변경!
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 [핵심] LEFT JOIN으로 교시 없는 질문도 가져옴
     .orderBy(desc(reservations.createdAt));
 
     const result = await query;

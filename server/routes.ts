@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage"; // 👈 여기 있는 storage만 쓸 겁니다!
 import { api } from "@shared/routes";
 import { z } from "zod";
 import passport from "passport";
@@ -66,7 +66,7 @@ export async function registerRoutes(
     } catch (err) { return done(err); }
   }));
 
-  // API Routes
+  // ================= API Routes =================
 
   // 1. 업로드
   app.post("/api/upload", upload.single("file"), async (req: any, res) => {
@@ -81,7 +81,7 @@ export async function registerRoutes(
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
 
-  // 2. 예약 생성 (교시 체크 제거됨)
+  // 2. 예약 생성
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
     try {
@@ -118,18 +118,20 @@ export async function registerRoutes(
     }
   });
 
-  // 3. 학생용 조회 (storage 함수 사용 - 개인 정보 보호 적용됨)
+  // ✨ [해결] 3. 학생용 조회 (storage.getUserReservations 호출로 통일)
   app.get(api.reservations.myHistory.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    // storage.ts에서 이미 user_id 필터링을 하고 있으므로 안전합니다.
-    res.json(await storage.getUserReservations((req.user as any).id));
+    // storage.ts에서 이미 req.user.id로 확실하게 필터링하므로 안전함
+    const myReservations = await storage.getUserReservations((req.user as any).id);
+    res.json(myReservations);
   });
 
-  // 4. 선생님용 조회 (storage 함수 사용 - LEFT JOIN 적용됨)
+  // ✨ [해결] 4. 선생님용 조회 (storage.getReservationsForTeacher 호출로 통일)
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    // storage.ts에서 LEFT JOIN으로 수정했으므로 모든 질문이 보입니다.
-    res.json(await storage.getReservationsForTeacher());
+    // storage.ts에서 LEFT JOIN으로 모든 질문을 가져오도록 수정했음
+    const allReservations = await storage.getReservationsForTeacher();
+    res.json(allReservations);
   });
 
   // 5. 수정/삭제
