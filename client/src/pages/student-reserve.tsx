@@ -16,7 +16,8 @@ import { isSameDay } from "date-fns";
 export default function StudentReserve() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"offline" | "online">("offline");
+  // ✨ 수정 1: 'offline' -> 'onsite'로 변경 (서버가 원하는 이름)
+  const [activeTab, setActiveTab] = useState<"onsite" | "online">("onsite");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [questionContent, setQuestionContent] = useState("");
@@ -28,13 +29,13 @@ export default function StudentReserve() {
     queryKey: ["/api/reservations"],
   });
 
-  // 오늘 현장 질문 횟수 계산
-  const todayOfflineCount = reservations?.filter(r => 
-    r.type === 'offline' && isSameDay(new Date(r.createdAt || new Date()), new Date())
+  // ✨ 수정 2: 오늘 현장 질문 횟수 계산도 'onsite'로 필터링
+  const todayOnsiteCount = reservations?.filter(r => 
+    r.type === 'onsite' && isSameDay(new Date(r.createdAt || new Date()), new Date())
   ).length || 0;
 
   const DAILY_LIMIT = 3; 
-  const isLimitReached = todayOfflineCount >= DAILY_LIMIT;
+  const isLimitReached = todayOnsiteCount >= DAILY_LIMIT;
 
   const handleClose = () => {
     setIsDialogOpen(false);
@@ -49,21 +50,19 @@ export default function StudentReserve() {
     mutationFn: async () => {
       let photoUrl = "";
 
-      // 이미지 업로드 처리
+      // 이미지 업로드
       if (selectedImage) {
         const formData = new FormData();
-        // ✨ 수정 포인트: 서버가 인식할 수 있도록 'photo' -> 'file'로 변경 ✨
-        formData.append("file", selectedImage); 
+        formData.append("file", selectedImage); // 이것도 'file'로 유지 (아까 고친 것)
 
         const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
-        // 업로드 실패 시 에러 처리 (서버 에러 방지)
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.message || "이미지 업로드에 실패했습니다.");
+          throw new Error(errorData.message || "이미지 업로드 실패");
         }
 
         const data = await res.json();
@@ -72,7 +71,7 @@ export default function StudentReserve() {
 
       const finalContent = questionContent.trim() === "" ? "(내용 없음)" : questionContent;
 
-      // 예약 요청
+      // ✨ 수정 3: 이제 type에 'onsite'가 들어갑니다.
       await apiRequest("POST", "/api/reservations", {
         type: activeTab, 
         content: finalContent,
@@ -84,7 +83,7 @@ export default function StudentReserve() {
       setShowSuccessView(true);
     },
     onError: (error: Error) => {
-      console.error("Reservation Error:", error);
+      console.error(error);
       toast({ 
         title: "예약 실패", 
         description: error.message, 
@@ -103,31 +102,32 @@ export default function StudentReserve() {
     }
   };
 
-  const QuestionCard = ({ type }: { type: "offline" | "online" }) => {
-    const isOffline = type === "offline";
-    const isDisabled = isOffline && isLimitReached;
+  // ✨ 수정 4: 컴포넌트 타입도 'onsite'로 변경
+  const QuestionCard = ({ type }: { type: "onsite" | "online" }) => {
+    const isOnsite = type === "onsite";
+    const isDisabled = isOnsite && isLimitReached;
 
     return (
       <Card className="border-2 border-dashed border-gray-200 shadow-none bg-gray-50/50">
         <CardContent className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-          <div className={`p-4 rounded-full ${isOffline ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
-            {isOffline ? <MapPin className="w-8 h-8" /> : <Globe className="w-8 h-8" />}
+          <div className={`p-4 rounded-full ${isOnsite ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
+            {isOnsite ? <MapPin className="w-8 h-8" /> : <Globe className="w-8 h-8" />}
           </div>
 
           <div className="space-y-2">
             <h3 className="text-xl font-bold">
-              {isOffline ? "현장 질문하기" : "온라인 질문하기"}
+              {isOnsite ? "현장 질문하기" : "온라인 질문하기"}
             </h3>
             <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-              {isOffline 
+              {isOnsite 
                 ? `선생님께 직접 찾아가서 질문합니다.\n(하루 최대 ${DAILY_LIMIT}회 가능)` 
                 : "시간 제한 없이 언제든 질문을 남길 수 있습니다."}
             </p>
           </div>
 
-          {isOffline && (
+          {isOnsite && (
              <div className={`text-sm font-bold px-3 py-1 rounded-full ${isLimitReached ? "bg-red-100 text-red-600" : "bg-gray-200 text-gray-700"}`}>
-               오늘 남은 횟수: {Math.max(0, DAILY_LIMIT - todayOfflineCount)} / {DAILY_LIMIT}회
+               오늘 남은 횟수: {Math.max(0, DAILY_LIMIT - todayOnsiteCount)} / {DAILY_LIMIT}회
              </div>
           )}
 
@@ -135,7 +135,7 @@ export default function StudentReserve() {
             onClick={() => setIsDialogOpen(true)}
             disabled={isDisabled}
             className={`mt-4 px-8 py-6 text-lg font-bold rounded-full shadow-lg transition-transform active:scale-95 ${
-              isOffline 
+              isOnsite 
                 ? "bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300" 
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
@@ -167,7 +167,7 @@ export default function StudentReserve() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gray-100 rounded-xl mb-6">
             <TabsTrigger 
-              value="offline"
+              value="onsite" // ✨ 수정 5: 탭 값 변경
               className="rounded-lg text-base font-medium data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-sm transition-all"
             >
               <MapPin className="w-4 h-4 mr-2" />
@@ -182,8 +182,8 @@ export default function StudentReserve() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="offline" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <QuestionCard type="offline" />
+          <TabsContent value="onsite" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <QuestionCard type="onsite" />
           </TabsContent>
 
           <TabsContent value="online" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -191,7 +191,7 @@ export default function StudentReserve() {
           </TabsContent>
         </Tabs>
 
-        {/* 모달 (질문 작성 or 예약 완료) */}
+        {/* 모달 */}
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           if (!open) handleClose();
           else setIsDialogOpen(true);
@@ -201,12 +201,12 @@ export default function StudentReserve() {
               // 완료 화면
               <div className="flex flex-col items-center justify-center py-10 text-center space-y-6 animate-in fade-in zoom-in duration-300">
                 <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-2 ring-8 ${
-                  activeTab === 'offline' 
+                  activeTab === 'onsite' 
                     ? "bg-orange-50 ring-orange-50/50" 
                     : "bg-blue-50 ring-blue-50/50"
                 }`}>
                   <CheckCircle2 className={`w-12 h-12 ${
-                    activeTab === 'offline' ? "text-orange-500" : "text-blue-500"
+                    activeTab === 'onsite' ? "text-orange-500" : "text-blue-500"
                   }`} />
                 </div>
                 <div className="space-y-3 px-4">
@@ -220,7 +220,7 @@ export default function StudentReserve() {
                   <Button 
                     onClick={handleClose}
                     className={`w-full h-14 text-lg font-bold rounded-xl shadow-lg transition-all hover:-translate-y-1 ${
-                      activeTab === 'offline'
+                      activeTab === 'onsite'
                         ? "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
                         : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
                     }`}
@@ -234,7 +234,7 @@ export default function StudentReserve() {
               <>
                 <DialogHeader>
                   <DialogTitle className="text-center text-xl font-bold flex flex-col items-center gap-2">
-                    {activeTab === 'offline' ? (
+                    {activeTab === 'onsite' ? (
                       <span className="text-orange-600 flex items-center gap-2">
                         <MapPin className="w-5 h-5" /> 현장 질문 작성
                       </span>
@@ -296,7 +296,7 @@ export default function StudentReserve() {
                     onClick={() => createReservationMutation.mutate()}
                     disabled={createReservationMutation.isPending} 
                     className={`w-full h-12 text-lg font-bold rounded-xl ${
-                      activeTab === 'offline' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
+                      activeTab === 'onsite' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
                     }`}
                   >
                     {createReservationMutation.isPending ? (
