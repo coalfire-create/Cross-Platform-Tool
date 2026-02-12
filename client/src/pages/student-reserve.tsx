@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MapPin, Globe, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { MapPin, Globe, Camera, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { startOfDay, isSameDay } from "date-fns";
+import { isSameDay } from "date-fns";
 
 export default function StudentReserve() {
   const { user } = useAuth();
@@ -22,7 +22,7 @@ export default function StudentReserve() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // 내 예약 내역 가져오기 (하루 제한 확인용)
+  // 내 예약 내역 가져오기
   const { data: reservations } = useQuery<Reservation[]>({
     queryKey: ["/api/reservations"],
   });
@@ -32,7 +32,7 @@ export default function StudentReserve() {
     r.type === 'offline' && isSameDay(new Date(r.createdAt || new Date()), new Date())
   ).length || 0;
 
-  const DAILY_LIMIT = 3; // 하루 제한 횟수
+  const DAILY_LIMIT = 3; 
   const isLimitReached = todayOfflineCount >= DAILY_LIMIT;
 
   // 예약 생성 Mutation
@@ -52,10 +52,12 @@ export default function StudentReserve() {
         photoUrl = data.url;
       }
 
-      // 예약 생성 요청 (scheduleId 없이 type으로 구분)
+      // 내용이 비어있으면 "내용 없음" 또는 빈 문자열 전송
+      const finalContent = questionContent.trim() === "" ? "(내용 없음)" : questionContent;
+
       await apiRequest("POST", "/api/reservations", {
-        type: activeTab, // 'offline' or 'online'
-        content: questionContent,
+        type: activeTab, 
+        content: finalContent,
         photoUrls: photoUrl ? [photoUrl] : [],
       });
     },
@@ -86,7 +88,6 @@ export default function StudentReserve() {
     }
   };
 
-  // 공통 질문 업로드 카드 컴포넌트
   const QuestionCard = ({ type }: { type: "offline" | "online" }) => {
     const isOffline = type === "offline";
     const isDisabled = isOffline && isLimitReached;
@@ -141,7 +142,6 @@ export default function StudentReserve() {
   return (
     <StudentLayout>
       <div className="space-y-6">
-        {/* 헤더 */}
         <div className="space-y-1">
           <h2 className="text-2xl font-bold tracking-tight">질문하기</h2>
           <p className="text-muted-foreground">
@@ -149,7 +149,6 @@ export default function StudentReserve() {
           </p>
         </div>
 
-        {/* 탭 및 콘텐츠 */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gray-100 rounded-xl mb-6">
             <TabsTrigger 
@@ -177,7 +176,6 @@ export default function StudentReserve() {
           </TabsContent>
         </Tabs>
 
-        {/* 질문 작성 모달 (현장/온라인 공용) */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white rounded-2xl">
             <DialogHeader>
@@ -197,10 +195,10 @@ export default function StudentReserve() {
             <div className="space-y-6 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                  질문 내용
+                  질문 내용 (선택 사항)
                 </label>
                 <Textarea
-                  placeholder="질문하고 싶은 내용을 간단히 적어주세요."
+                  placeholder="내용을 입력하지 않아도 예약할 수 있습니다."
                   value={questionContent}
                   onChange={(e) => setQuestionContent(e.target.value)}
                   className="min-h-[120px] resize-none border-gray-200 focus:border-primary rounded-xl"
@@ -240,9 +238,10 @@ export default function StudentReserve() {
                 </div>
               </div>
 
+              {/* 버튼의 disabled 조건에서 !questionContent 제거 */}
               <Button 
                 onClick={() => createReservationMutation.mutate()}
-                disabled={!questionContent || createReservationMutation.isPending}
+                disabled={createReservationMutation.isPending} 
                 className={`w-full h-12 text-lg font-bold rounded-xl ${
                    activeTab === 'offline' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
                 }`}
