@@ -19,10 +19,6 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  // =================================================================
-  // 🚨 [배포 환경 필수 설정]
-  // =================================================================
-
   app.set("trust proxy", 1);
 
   app.use((req, res, next) => {
@@ -59,10 +55,6 @@ export async function registerRoutes(
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // =================================================================
-  // 🔐 [인증 로직]
-  // =================================================================
-
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
   });
@@ -81,7 +73,6 @@ export async function registerRoutes(
     try {
       const cleanPhone = phone.replace(/-/g, '');
       const user = await storage.getUserByPhone(cleanPhone);
-
       if (!user || user.password !== pw) {
         return done(null, false, { message: '정보가 일치하지 않습니다.' });
       }
@@ -99,13 +90,10 @@ export async function registerRoutes(
     try {
       const fileExt = req.file.originalname.split('.').pop() || 'jpg';
       const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
-
       const { error } = await supabase.storage
         .from('uploads')
         .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
-
       if (error) throw error;
-
       const { data } = supabase.storage.from('uploads').getPublicUrl(fileName);
       res.json({ url: data.publicUrl });
     } catch (error: any) {
@@ -113,31 +101,23 @@ export async function registerRoutes(
     }
   });
 
-  // 2. 예약 생성 (수정됨: 교시 정보가 없어도 현장 질문 가능하도록 변경)
+  // 2. 예약 생성
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
-
     try {
       const { scheduleId, type, photoUrls } = api.reservations.create.input.parse(req.body);
       const userId = (req.user as any).id;
       const content = req.body.content || null;
 
       if (type === 'onsite') {
-        // ✨ [수정 완료] 기존의 '교시 정보가 없습니다' 에러를 발생시키던 코드를 삭제했습니다.
-        // if (!scheduleId) return res.status(400).json({ message: "교시 정보가 없습니다." }); 
-
-        // 1. 하루 3회 제한 확인 (이건 유지)
         const dailyCount = await storage.getDailyOnsiteCount(userId, new Date());
         if (dailyCount >= 3) return res.status(403).json({ message: "현장 질문은 하루 3회까지만 가능합니다." });
 
-        // 2. 만약 scheduleId가 넘어왔을 때만 마감 여부를 확인 (기존 로직 호환성 유지)
         if (scheduleId) {
           const schedule = await storage.getSchedule(scheduleId);
           const count = await storage.getReservationCount(scheduleId);
-
           if (!schedule) return res.status(404).json({ message: "존재하지 않는 시간표입니다." });
           if (count >= schedule.capacity) return res.status(409).json({ message: "마감된 시간입니다." });
-
           const hasReserved = await storage.checkUserReserved(userId, scheduleId);
           if (hasReserved) return res.status(409).json({ message: "이미 예약한 시간입니다." });
         }
@@ -152,9 +132,7 @@ export async function registerRoutes(
         status: 'pending',
         teacherFeedback: null,
       });
-
       res.status(201).json(reservation);
-
     } catch (err: any) {
       console.error("❌ [Reservation] Failed:", err);
       if (err instanceof z.ZodError) return res.status(400).json({ message: "입력값 오류" });
@@ -162,27 +140,55 @@ export async function registerRoutes(
     }
   });
 
-  // 3. 예약 조회
+  // 3. 예약 조회 (학생용 - 내 것만 조회)
   app.get(api.reservations.myHistory.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    res.json(await storage.getUserReservations((req.user as any).id));
+    const userId = (req.user as any).id;
+    try {
+       // 내 예약만 가져오기 (Supabase 직접 조회)
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const myReservations = data.map((r: any) => ({
+        id: r.id,
+        userId: r.user_id,
+        scheduleId: r.schedule_id,
+        type: r.type,
+        content: r.content,
+        photoUrls: r.photo_urls || [],
+        status: r.status,
+        teacherFeedback: r.teacher_feedback,
+        createdAt: r.created_at,
+        studentName: (req.user as any).name,
+        seatNumber: (req.user as any).seatNumber
+      }));
+      res.json(myReservations);
+    } catch (err) {
+      console.error("My History Error:", err);
+      res.json([]);
+    }
   });
 
+  // 4. 예약 조회 (선생님용 - 복구됨)
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
+    // 원래대로 storage 함수 사용 (Supabase 직접 조회 실패 시 대비)
     res.json(await storage.getReservationsForTeacher());
   });
 
-  // 4. 예약 수정 및 삭제
+  // 5. 예약 수정 및 삭제
   app.patch("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const id = parseInt(req.params.id);
       const user = req.user as any;
       const r = await storage.getReservation(id);
-
       if (!r) return res.status(404).json({ message: "예약 없음" });
-
       if (user.role === 'teacher') {
         res.json(await storage.updateReservation(id, { 
           status: req.body.status, 
@@ -212,59 +218,31 @@ export async function registerRoutes(
     } catch (err) { res.status(500).json({ message: "삭제 실패" }); }
   });
 
-  // =================================================================
-  // 🔑 [Auth 라우트]
-  // =================================================================
-
-  app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => {
-    res.json(req.user);
-  });
-
+  // Auth
+  app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => res.json(req.user));
   app.post(api.auth.logout.path, (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
       req.session.destroy(() => res.sendStatus(200));
     });
   });
-
-  // ✅ 회원가입
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
       const cleanPhone = phoneNumber.replace(/-/g, '');
-
       if (await storage.getUserByPhone(cleanPhone)) return res.status(409).json({ message: "이미 가입됨" });
-
-      const { data: allowed } = await supabase
-        .from('allowed_students')
-        .select('*')
-        .eq('phone_number', cleanPhone)
-        .single();
-
+      const { data: allowed } = await supabase.from('allowed_students').select('*').eq('phone_number', cleanPhone).single();
       if (!allowed) return res.status(403).json({ message: "명단에 없는 번호" });
-
       const newUser = await storage.createUser({ 
-        username: cleanPhone, 
-        phoneNumber: cleanPhone, 
-        password, 
-        name: allowed.name, 
-        seatNumber: allowed.seat_number ? allowed.seat_number.toString() : "", 
-        role: "student" 
+        username: cleanPhone, phoneNumber: cleanPhone, password, 
+        name: allowed.name, seatNumber: allowed.seat_number ? allowed.seat_number.toString() : "", role: "student" 
       });
-
       req.login(newUser, (err) => err ? res.status(500).json({ message: "Login Fail" }) : res.status(201).json(newUser));
-    } catch (err) { 
-        console.error("Register Error:", err);
-        res.status(500).json({ message: "Server Error" }); 
-    }
+    } catch (err) { console.error("Register Error:", err); res.status(500).json({ message: "Server Error" }); }
   });
+  app.get(api.auth.me.path, (req, res) => { if (!req.user) return res.sendStatus(401); res.json(req.user); });
 
-  app.get(api.auth.me.path, (req, res) => { 
-    if (!req.user) return res.sendStatus(401); 
-    res.json(req.user); 
-  });
-
-  // ✅ 스케줄 및 예약 현황 조회
+  // 스케줄 및 통계
   app.get(api.schedules.list.path, async (req, res) => {
     const schedules = await storage.getSchedules();
     const result = await Promise.all(schedules.map(async (s) => {
@@ -274,20 +252,12 @@ export async function registerRoutes(
     }));
     res.json(result);
   });
-
-  // ✅ 수강생 명수 카운트
   app.get("/api/stats/students", async (req, res) => {
     try {
-      const { count, error } = await supabase
-        .from('allowed_students')
-        .select('*', { count: 'exact', head: true });
-
+      const { count, error } = await supabase.from('allowed_students').select('*', { count: 'exact', head: true });
       if (error) throw error;
       res.json({ count: count || 0 });
-    } catch (err) {
-      console.error("Stats Error:", err);
-      res.status(500).json({ message: "Error" });
-    }
+    } catch (err) { console.error("Stats Error:", err); res.status(500).json({ message: "Error" }); }
   });
 
   return httpServer;

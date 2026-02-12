@@ -12,7 +12,7 @@ import {
   type ScheduleWithCount,
   type ReservationWithDetails,
 } from "@shared/schema";
-import { eq, and, count, desc, sql } from "drizzle-orm";
+import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm"; // gte, lte 추가됨
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -75,10 +75,9 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  // ✅ [수정 핵심] username이 null이 되지 않도록 명시적으로 매핑합니다.
   async createUser(user: any): Promise<User> {
     const [newUser] = await db.insert(users).values({
-      username: user.username || user.phoneNumber, // 아이디가 없으면 전화번호를 아이디로 사용
+      username: user.username || user.phoneNumber, 
       password: user.password,
       phoneNumber: user.phoneNumber,
       name: user.name,
@@ -150,12 +149,14 @@ export class DatabaseStorage implements IStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    // 날짜 비교 로직 수정 (drizzle-orm 방식)
     const [result] = await db.select({ count: count() })
       .from(reservations)
       .where(and(
         eq(reservations.userId, userId),
         eq(reservations.type, 'onsite'),
-        sql`${reservations.createdAt} >= ${startOfDay} AND ${reservations.createdAt} <= ${endOfDay}`
+        gte(reservations.createdAt, startOfDay), // >= startOfDay
+        lte(reservations.createdAt, endOfDay)    // <= endOfDay
       ));
     return result.count;
   }
@@ -195,6 +196,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  // ✨✨ [핵심 수정] 교시 없는 질문도 가져오도록 leftJoin으로 변경 + 조건 완화 ✨✨
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
     let query = db.select({
       id: reservations.id,
@@ -213,13 +215,17 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id));
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 스케줄 없어도 가져오기 위해 leftJoin 유지
+    .orderBy(desc(reservations.createdAt)); // 최신순 정렬
+
+    // 만약 day나 period 필터가 있다면 (기존 로직 호환성)
+    // 하지만 지금은 전체 조회를 원하므로 필터 로직은 선택 사항으로 둡니다.
 
     const result = await query;
     return result.map(r => ({ 
       ...r, 
       seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
-      day: r.day || "온라인",
+      day: r.day || (r.type === 'onsite' ? "현장" : "온라인"), // 교시 없으면 '현장' 또는 '온라인' 표시
       period: r.period || 0
     }));
   }
