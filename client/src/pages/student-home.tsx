@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { Reservation, Schedule } from "@shared/schema";
+import { Reservation } from "@shared/schema";
 import { StudentLayout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Clock, Globe, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar, MapPin, Clock, Globe, CalendarPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 export default function StudentHome() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const { data: reservations } = useQuery<Reservation[]>({ 
     queryKey: ["/api/reservations"] 
@@ -29,24 +32,35 @@ export default function StudentHome() {
           </p>
         </section>
 
-        {/* 다음 질문 일정 (상세보기 버튼 삭제됨) */}
+        {/* 메인 대시보드 카드 (문구 삭제 및 심플화) */}
         <Card className="bg-primary text-primary-foreground overflow-hidden border-none shadow-xl relative">
           <CardContent className="p-8">
-            <div className="relative z-10">
-              <p className="text-primary-foreground/70 text-sm font-medium mb-1">다음 질문 일정</p>
-              <h2 className="text-4xl font-bold mb-4">
-                {nextReservation ? (nextReservation.type === 'online' ? '온라인' : '현장') : '예정된 질문 없음'}
-              </h2>
-              <div className="flex items-center gap-2 text-primary-foreground/80">
-                <Clock className="w-4 h-4" />
-                <span>{nextReservation ? (nextReservation.type === 'online' ? '온라인 질문' : '현장 질문') : '질문을 예약해보세요'}</span>
+            <div className="relative z-10 flex flex-col items-start gap-8">
+
+              {/* 텍스트 정보 (불필요한 문구 삭제됨) */}
+              <div>
+                <h2 className="text-4xl font-bold">
+                  {nextReservation ? (nextReservation.type === 'online' ? '온라인' : '현장') : '질문 예약'}
+                </h2>
+                {/* 여기에 있던 '다음 질문 일정', '온라인 질문' 문구 모두 삭제함 */}
               </div>
+
+              {/* 하얀색 예약하기 버튼 */}
+              <Button 
+                onClick={() => setLocation("/reserve")}
+                className="bg-white text-primary hover:bg-white/90 font-bold px-6 py-6 text-md shadow-lg transition-transform active:scale-95 w-full sm:w-auto justify-start"
+              >
+                <CalendarPlus className="w-5 h-5 mr-2" />
+                예약하기
+              </Button>
             </div>
+
+            {/* 배경 장식 아이콘 */}
             <Clock className="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-white/5 rotate-12" />
           </CardContent>
         </Card>
 
-        {/* 대시보드 통계 정보 */}
+        {/* 통계 정보 */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-none shadow-md bg-white">
             <CardContent className="p-6 flex flex-col items-center justify-center text-center">
@@ -69,7 +83,7 @@ export default function StudentHome() {
           </Card>
         </div>
 
-        {/* 최근 예약 내역 (아이콘 및 텍스트 수정) */}
+        {/* 최근 예약 내역 */}
         <section>
           <h3 className="font-bold text-lg mb-4">최근 예약 내역</h3>
           <div className="space-y-3">
@@ -79,14 +93,14 @@ export default function StudentHome() {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center">
                       {res.type === 'online' ? (
-                        <Globe className="w-6 h-6 text-blue-500" /> // '온' 대신 지구본 아이콘
+                        <Globe className="w-6 h-6 text-blue-500" />
                       ) : (
                         <MapPin className="w-6 h-6 text-orange-500" />
                       )}
                     </div>
                     <div>
                       <p className="font-bold">
-                        {res.type === 'online' ? '온라인 질문' : '현장 질문'} {/* 0교시 대신 명칭 변경 */}
+                        {res.type === 'online' ? '온라인 질문' : '현장 질문'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(res.createdAt || new Date()), "PPP", { locale: ko })}
