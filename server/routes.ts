@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage"; // 👈 여기 있는 storage만 쓸 겁니다!
+import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import passport from "passport";
@@ -8,6 +8,10 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import multer from "multer";
 import { supabase } from "./db";
+// ✨ [추가됨] 직접 DB 조회를 위한 라이브러리 추가
+import { db } from "./db"; 
+import { reservations, users, schedules } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -118,20 +122,87 @@ export async function registerRoutes(
     }
   });
 
-  // ✨ [해결] 3. 학생용 조회 (storage.getUserReservations 호출로 통일)
+  // ✨✨ [핵심 수정 1] 학생용 조회 - 직접 DB에서 내 ID로 필터링 ✨✨
   app.get(api.reservations.myHistory.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    // storage.ts에서 이미 req.user.id로 확실하게 필터링하므로 안전함
-    const myReservations = await storage.getUserReservations((req.user as any).id);
-    res.json(myReservations);
+
+    try {
+      const myId = (req.user as any).id;
+
+      // storage 함수를 안 쓰고 여기서 직접 조회합니다.
+      const data = await db.select({
+          id: reservations.id,
+          userId: reservations.userId,
+          scheduleId: reservations.scheduleId,
+          photoUrls: reservations.photoUrls,
+          createdAt: reservations.createdAt,
+          studentName: users.name,
+          seatNumber: users.seatNumber,
+          day: schedules.dayOfWeek,
+          period: schedules.periodNumber,
+          teacherFeedback: reservations.teacherFeedback,
+          status: reservations.status,
+          content: reservations.content,
+          type: reservations.type
+        })
+        .from(reservations)
+        .innerJoin(users, eq(reservations.userId, users.id))
+        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
+        .where(eq(reservations.userId, myId)) // 🔒 절대적으로 내 ID만 조회
+        .orderBy(desc(reservations.createdAt));
+
+      const formatted = data.map(r => ({ 
+        ...r, 
+        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
+        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
+        period: r.period || 0
+      }));
+
+      res.json(formatted);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "조회 실패" });
+    }
   });
 
-  // ✨ [해결] 4. 선생님용 조회 (storage.getReservationsForTeacher 호출로 통일)
+  // ✨✨ [핵심 수정 2] 선생님용 조회 - LEFT JOIN으로 모든 질문 강제 조회 ✨✨
   app.get(api.reservations.list.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    // storage.ts에서 LEFT JOIN으로 모든 질문을 가져오도록 수정했음
-    const allReservations = await storage.getReservationsForTeacher();
-    res.json(allReservations);
+
+    try {
+      // storage 함수 안 쓰고 직접 조회 (LEFT JOIN 필수)
+      const data = await db.select({
+          id: reservations.id,
+          userId: reservations.userId,
+          scheduleId: reservations.scheduleId,
+          photoUrls: reservations.photoUrls,
+          createdAt: reservations.createdAt,
+          studentName: users.name,
+          seatNumber: users.seatNumber,
+          day: schedules.dayOfWeek,
+          period: schedules.periodNumber,
+          teacherFeedback: reservations.teacherFeedback,
+          status: reservations.status,
+          content: reservations.content,
+          type: reservations.type
+        })
+        .from(reservations)
+        .innerJoin(users, eq(reservations.userId, users.id))
+        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 🟢 교시 없어도 가져옴
+        .orderBy(desc(reservations.createdAt));
+
+      const formatted = data.map(r => ({ 
+        ...r, 
+        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
+        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
+        period: r.period || 0
+      }));
+
+      res.json(formatted);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "목록 조회 실패" });
+    }
   });
 
   // 5. 수정/삭제
