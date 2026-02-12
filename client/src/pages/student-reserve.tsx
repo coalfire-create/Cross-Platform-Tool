@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MapPin, Globe, Camera, Loader2, AlertCircle } from "lucide-react";
+import { MapPin, Globe, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { isSameDay } from "date-fns";
 
@@ -18,6 +18,7 @@ export default function StudentReserve() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offline" | "online">("offline");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showSuccessView, setShowSuccessView] = useState(false); // 완료 화면 상태
   const [questionContent, setQuestionContent] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -35,12 +36,20 @@ export default function StudentReserve() {
   const DAILY_LIMIT = 3; 
   const isLimitReached = todayOfflineCount >= DAILY_LIMIT;
 
+  // 상태 초기화 및 모달 닫기 함수
+  const handleClose = () => {
+    setIsDialogOpen(false);
+    setShowSuccessView(false);
+    setQuestionContent("");
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   // 예약 생성 Mutation
   const createReservationMutation = useMutation({
     mutationFn: async () => {
       let photoUrl = "";
 
-      // 이미지 업로드 처리
       if (selectedImage) {
         const formData = new FormData();
         formData.append("photo", selectedImage);
@@ -52,7 +61,6 @@ export default function StudentReserve() {
         photoUrl = data.url;
       }
 
-      // 내용이 비어있으면 "내용 없음" 또는 빈 문자열 전송
       const finalContent = questionContent.trim() === "" ? "(내용 없음)" : questionContent;
 
       await apiRequest("POST", "/api/reservations", {
@@ -63,11 +71,8 @@ export default function StudentReserve() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-      toast({ title: "예약 완료", description: "질문이 성공적으로 등록되었습니다." });
-      setIsDialogOpen(false);
-      setQuestionContent("");
-      setSelectedImage(null);
-      setImagePreview(null);
+      // ✨ [수정됨] 온라인/현장 구분 없이 무조건 완료 화면 보여주기 ✨
+      setShowSuccessView(true);
     },
     onError: (error: Error) => {
       toast({ 
@@ -176,83 +181,123 @@ export default function StudentReserve() {
           </TabsContent>
         </Tabs>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-md bg-white rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-center text-xl font-bold flex flex-col items-center gap-2">
-                {activeTab === 'offline' ? (
-                   <span className="text-orange-600 flex items-center gap-2">
-                     <MapPin className="w-5 h-5" /> 현장 질문 작성
-                   </span>
-                ) : (
-                   <span className="text-blue-600 flex items-center gap-2">
-                     <Globe className="w-5 h-5" /> 온라인 질문 작성
-                   </span>
-                )}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                  질문 내용 (선택 사항)
-                </label>
-                <Textarea
-                  placeholder="내용을 입력하지 않아도 예약할 수 있습니다."
-                  value={questionContent}
-                  onChange={(e) => setQuestionContent(e.target.value)}
-                  className="min-h-[120px] resize-none border-gray-200 focus:border-primary rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">사진 첨부 (선택)</label>
-                <div 
-                  className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors h-40 relative overflow-hidden"
-                  onClick={() => document.getElementById('photo-upload')?.click()}
-                >
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center text-gray-400">
-                      <Camera className="w-8 h-8 mb-2" />
-                      <span className="text-xs">클릭하여 사진 업로드</span>
-                    </div>
-                  )}
-                  <input 
-                    id="photo-upload" 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleImageSelect}
-                  />
-                  {imagePreview && (
-                    <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70" onClick={(e) => {
-                      e.stopPropagation();
-                      setImagePreview(null);
-                      setSelectedImage(null);
-                    }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    </div>
-                  )}
+        {/* 모달 (질문 작성 or 예약 완료) */}
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (!open) handleClose();
+          else setIsDialogOpen(true);
+        }}>
+          <DialogContent className="sm:max-w-md bg-white rounded-2xl overflow-hidden">
+            {showSuccessView ? (
+              // ✨ [통합 완료 화면] ✨
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-6 animate-in fade-in zoom-in duration-300">
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-2 ring-8 ${
+                  activeTab === 'offline' 
+                    ? "bg-orange-50 ring-orange-50/50" 
+                    : "bg-blue-50 ring-blue-50/50"
+                }`}>
+                  <CheckCircle2 className={`w-12 h-12 ${
+                    activeTab === 'offline' ? "text-orange-500" : "text-blue-500"
+                  }`} />
+                </div>
+                <div className="space-y-3 px-4">
+                  <h2 className="text-2xl font-bold text-gray-900">예약 요청 완료!</h2>
+                  <p className="text-gray-600 text-lg leading-relaxed font-medium">
+                    해당 시간대의 조교님이 곧 확인할 예정이니<br/>
+                    잠시만 기다려주세요.
+                  </p>
+                </div>
+                <div className="w-full px-6 pt-4">
+                  <Button 
+                    onClick={handleClose}
+                    className={`w-full h-14 text-lg font-bold rounded-xl shadow-lg transition-all hover:-translate-y-1 ${
+                      activeTab === 'offline'
+                        ? "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
+                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+                    }`}
+                  >
+                    확인했습니다
+                  </Button>
                 </div>
               </div>
+            ) : (
+              // [질문 작성 화면]
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-center text-xl font-bold flex flex-col items-center gap-2">
+                    {activeTab === 'offline' ? (
+                      <span className="text-orange-600 flex items-center gap-2">
+                        <MapPin className="w-5 h-5" /> 현장 질문 작성
+                      </span>
+                    ) : (
+                      <span className="text-blue-600 flex items-center gap-2">
+                        <Globe className="w-5 h-5" /> 온라인 질문 작성
+                      </span>
+                    )}
+                  </DialogTitle>
+                </DialogHeader>
 
-              {/* 버튼의 disabled 조건에서 !questionContent 제거 */}
-              <Button 
-                onClick={() => createReservationMutation.mutate()}
-                disabled={createReservationMutation.isPending} 
-                className={`w-full h-12 text-lg font-bold rounded-xl ${
-                   activeTab === 'offline' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {createReservationMutation.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  "예약 완료"
-                )}
-              </Button>
-            </div>
+                <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                      질문 내용 (선택 사항)
+                    </label>
+                    <Textarea
+                      placeholder="내용을 입력하지 않아도 예약할 수 있습니다."
+                      value={questionContent}
+                      onChange={(e) => setQuestionContent(e.target.value)}
+                      className="min-h-[120px] resize-none border-gray-200 focus:border-primary rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">사진 첨부 (선택)</label>
+                    <div 
+                      className="border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors h-40 relative overflow-hidden"
+                      onClick={() => document.getElementById('photo-upload')?.click()}
+                    >
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center text-gray-400">
+                          <Camera className="w-8 h-8 mb-2" />
+                          <span className="text-xs">클릭하여 사진 업로드</span>
+                        </div>
+                      )}
+                      <input 
+                        id="photo-upload" 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleImageSelect}
+                      />
+                      {imagePreview && (
+                        <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70" onClick={(e) => {
+                          e.stopPropagation();
+                          setImagePreview(null);
+                          setSelectedImage(null);
+                        }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => createReservationMutation.mutate()}
+                    disabled={createReservationMutation.isPending} 
+                    className={`w-full h-12 text-lg font-bold rounded-xl ${
+                      activeTab === 'offline' ? "bg-orange-500 hover:bg-orange-600" : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {createReservationMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      "예약 완료"
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </div>
