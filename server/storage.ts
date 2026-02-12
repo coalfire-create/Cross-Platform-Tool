@@ -12,7 +12,7 @@ import {
   type ScheduleWithCount,
   type ReservationWithDetails,
 } from "@shared/schema";
-import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm"; // gte, lte 추가됨
+import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm"; 
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -149,14 +149,13 @@ export class DatabaseStorage implements IStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 날짜 비교 로직 수정 (drizzle-orm 방식)
     const [result] = await db.select({ count: count() })
       .from(reservations)
       .where(and(
         eq(reservations.userId, userId),
         eq(reservations.type, 'onsite'),
-        gte(reservations.createdAt, startOfDay), // >= startOfDay
-        lte(reservations.createdAt, endOfDay)    // <= endOfDay
+        gte(reservations.createdAt, startOfDay),
+        lte(reservations.createdAt, endOfDay)
       ));
     return result.count;
   }
@@ -166,6 +165,7 @@ export class DatabaseStorage implements IStorage {
     return newReservation;
   }
 
+  // 🔒 [학생용 조회] - 본인 것만 보기 (완벽 수정)
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
     const result = await db.select({
       id: reservations.id,
@@ -184,20 +184,21 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
-    .where(eq(reservations.userId, userId))
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 스케줄 없어도 보이게 leftJoin
+    .where(eq(reservations.userId, userId)) // 👈 [핵심] 여기서 로그인한 학생 ID와 일치하는 것만 필터링!
     .orderBy(desc(reservations.createdAt));
 
     return result.map(r => ({ 
       ...r, 
       seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
-      day: r.day || "온라인",
+      day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
       period: r.period || 0
     }));
   }
 
-  // ✨✨ [핵심 수정] 교시 없는 질문도 가져오도록 leftJoin으로 변경 + 조건 완화 ✨✨
+  // 👩‍🏫 [선생님용 조회] - 모든 질문 보기 (완벽 수정)
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
+    // 👈 [핵심] 기존 innerJoin(schedules)를 leftJoin으로 변경하여 '현장 질문(교시 없음)'도 보이게 수정
     let query = db.select({
       id: reservations.id,
       userId: reservations.userId,
@@ -215,17 +216,14 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 스케줄 없어도 가져오기 위해 leftJoin 유지
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 여기가 중요! leftJoin!
     .orderBy(desc(reservations.createdAt)); // 최신순 정렬
-
-    // 만약 day나 period 필터가 있다면 (기존 로직 호환성)
-    // 하지만 지금은 전체 조회를 원하므로 필터 로직은 선택 사항으로 둡니다.
 
     const result = await query;
     return result.map(r => ({ 
       ...r, 
       seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
-      day: r.day || (r.type === 'onsite' ? "현장" : "온라인"), // 교시 없으면 '현장' 또는 '온라인' 표시
+      day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
       period: r.period || 0
     }));
   }
