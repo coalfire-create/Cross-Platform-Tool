@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { BottomNav, DesktopNav } from "./bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
-import { Owl } from "lucide-react"; // 1. 부엉이 아이콘 추가
 
 export function StudentLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -26,12 +25,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          {/* 2. 'T' 로고를 부엉이 아이콘으로 변경 */}
-          <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <Owl className="w-6 h-6" /> 
+          {/* 로고 아이콘 대신 텍스트 'Q'로 변경 */}
+          <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-primary/20">
+            Q
           </div>
           <div>
-            {/* 3. 명칭을 올빼미Q로 변경 */}
             <h1 className="font-bold text-lg leading-tight">올빼미Q</h1>
             <p className="text-xs text-muted-foreground">관리자: {user?.name}</p>
           </div>
