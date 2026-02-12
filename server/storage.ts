@@ -5,11 +5,9 @@ import {
   schedules,
   reservations,
   type User,
-  type InsertUser,
   type AllowedStudent,
   type Schedule,
   type Reservation,
-  type ScheduleWithCount,
   type ReservationWithDetails,
 } from "@shared/schema";
 import { eq, and, count, desc, sql, gte, lte } from "drizzle-orm"; 
@@ -165,7 +163,7 @@ export class DatabaseStorage implements IStorage {
     return newReservation;
   }
 
-  // 🔒 [학생용 조회] - 본인 것만 보기 (완벽 수정)
+  // 🔒 [학생용] 내 예약만 보기 (WHERE 절 강화)
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
     const result = await db.select({
       id: reservations.id,
@@ -184,8 +182,8 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 스케줄 없어도 보이게 leftJoin
-    .where(eq(reservations.userId, userId)) // 👈 [핵심] 여기서 로그인한 학생 ID와 일치하는 것만 필터링!
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
+    .where(eq(reservations.userId, userId)) // 👈 [중요] 반드시 내 아이디와 같아야 함
     .orderBy(desc(reservations.createdAt));
 
     return result.map(r => ({ 
@@ -196,10 +194,9 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // 👩‍🏫 [선생님용 조회] - 모든 질문 보기 (완벽 수정)
+  // 👩‍🏫 [선생님용] 모든 질문 보기 (LEFT JOIN 적용)
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
-    // 👈 [핵심] 기존 innerJoin(schedules)를 leftJoin으로 변경하여 '현장 질문(교시 없음)'도 보이게 수정
-    let query = db.select({
+    const query = db.select({
       id: reservations.id,
       userId: reservations.userId,
       scheduleId: reservations.scheduleId,
@@ -216,8 +213,8 @@ export class DatabaseStorage implements IStorage {
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 여기가 중요! leftJoin!
-    .orderBy(desc(reservations.createdAt)); // 최신순 정렬
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 [중요] INNER -> LEFT 변경!
+    .orderBy(desc(reservations.createdAt));
 
     const result = await query;
     return result.map(r => ({ 
