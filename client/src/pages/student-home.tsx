@@ -1,119 +1,113 @@
-import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { Reservation, Schedule } from "@shared/schema";
 import { StudentLayout } from "@/components/layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
-import { ArrowRight, Bell, Calendar, Clock, MapPin } from "lucide-react";
-import { useReservations } from "@/hooks/use-reservations";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, MapPin, Clock, Globe, ArrowRight } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export default function StudentHome() {
   const { user } = useAuth();
-  const { history } = useReservations();
 
-  // Find next upcoming reservation (mock logic for demo, as API returns history)
-  const nextReservation = history.data?.[0]; 
+  const { data: reservations } = useQuery<Reservation[]>({ 
+    queryKey: ["/api/reservations"] 
+  });
+
+  const nextReservation = reservations?.find(r => r.status === 'pending' || r.status === 'confirmed');
 
   return (
     <StudentLayout>
-      <div className="space-y-6">
-        {/* Welcome Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold font-display text-primary">
-              안녕하세요, {user?.name.split(" ")[0]}님! 👋 <br/>올빼미Q에 오신걸 환영합니다
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              오늘도 성장을 위해 달려볼까요?
-            </p>
-          </div>
-          <div className="p-2 bg-white rounded-full shadow-sm border border-border">
-            <Bell className="w-5 h-5 text-primary" />
-          </div>
-        </div>
+      <div className="space-y-8">
+        {/* 인사말 섹션 */}
+        <section>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            안녕하세요, {user?.name}님! 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            올빼미Q에 오신걸 환영합니다
+          </p>
+        </section>
 
-        {/* Hero Card - Next Class or Call to Action */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-xl shadow-primary/20 p-6">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <Clock className="w-32 h-32 transform rotate-12" />
-          </div>
-          
-          <div className="relative z-10">
-            <h2 className="text-lg font-medium opacity-90 mb-1">다음 질문 일정</h2>
-            {nextReservation ? (
-              <div className="mt-4">
-                <div className="text-3xl font-bold font-display mb-2">{nextReservation.day}</div>
-                <div className="flex items-center gap-2 text-primary-foreground/80 mb-6">
-                  <Clock className="w-4 h-4" />
-                  <span>{nextReservation.type === 'onsite' ? `${nextReservation.period}교시 (현장)` : '온라인 질문'}</span>
-                </div>
-                <Button variant="secondary" className="w-full sm:w-auto rounded-xl font-semibold text-primary">
-                  상세 보기
-                </Button>
+        {/* 다음 질문 일정 (상세보기 버튼 삭제됨) */}
+        <Card className="bg-primary text-primary-foreground overflow-hidden border-none shadow-xl relative">
+          <CardContent className="p-8">
+            <div className="relative z-10">
+              <p className="text-primary-foreground/70 text-sm font-medium mb-1">다음 질문 일정</p>
+              <h2 className="text-4xl font-bold mb-4">
+                {nextReservation ? (nextReservation.type === 'online' ? '온라인' : '현장') : '예정된 질문 없음'}
+              </h2>
+              <div className="flex items-center gap-2 text-primary-foreground/80">
+                <Clock className="w-4 h-4" />
+                <span>{nextReservation ? (nextReservation.type === 'online' ? '온라인 질문' : '현장 질문') : '질문을 예약해보세요'}</span>
               </div>
-            ) : (
-              <div className="mt-4">
-                <div className="text-2xl font-bold font-display mb-4">예정된 질문이 없습니다</div>
-                <Link href="/reserve">
-                  <Button variant="secondary" className="w-full sm:w-auto rounded-xl font-semibold text-primary group">
-                    질문하기
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+            <Clock className="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-white/5 rotate-12" />
+          </CardContent>
+        </Card>
 
-        {/* Quick Stats or Info */}
+        {/* 대시보드 통계 정보 */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="rounded-2xl border-none shadow-sm bg-white">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
-                <Calendar className="w-5 h-5" />
+          <Card className="border-none shadow-md bg-white">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                <Calendar className="w-5 h-5 text-blue-500" />
               </div>
-              <span className="text-2xl font-bold text-foreground">{history.data?.length || 0}</span>
-              <span className="text-xs text-muted-foreground">총 예약 횟수</span>
+              <span className="text-2xl font-bold">{reservations?.length || 0}</span>
+              <span className="text-xs text-muted-foreground mt-1">총 예약 횟수</span>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl border-none shadow-sm bg-white">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-2">
-                <MapPin className="w-5 h-5" />
+
+          <Card className="border-none shadow-md bg-white">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mb-3">
+                <MapPin className="w-5 h-5 text-orange-500" />
               </div>
-              <span className="text-2xl font-bold text-foreground">{user?.seatNumber || "-"}</span>
-              <span className="text-xs text-muted-foreground">내 좌석 번호</span>
+              <span className="text-2xl font-bold">{user?.seatNumber || '-'}</span>
+              <span className="text-xs text-muted-foreground mt-1">내 좌석 번호</span>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Activity */}
-        <div>
-          <h3 className="text-lg font-bold font-display text-primary mb-4">최근 예약 내역</h3>
+        {/* 최근 예약 내역 (아이콘 및 텍스트 수정) */}
+        <section>
+          <h3 className="font-bold text-lg mb-4">최근 예약 내역</h3>
           <div className="space-y-3">
-            {history.isLoading ? (
-               [1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)
-            ) : history.data?.slice(0, 3).map((res: any, idx: number) => (
-              <div key={idx} className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">
-                    {res.day.substring(0,1)}
+            {reservations?.slice(0, 5).map((res) => (
+              <Card key={res.id} className="border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center">
+                      {res.type === 'online' ? (
+                        <Globe className="w-6 h-6 text-blue-500" /> // '온' 대신 지구본 아이콘
+                      ) : (
+                        <MapPin className="w-6 h-6 text-orange-500" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold">
+                        {res.type === 'online' ? '온라인 질문' : '현장 질문'} {/* 0교시 대신 명칭 변경 */}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(res.createdAt || new Date()), "PPP", { locale: ko })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">{res.period}교시</p>
-                    <p className="text-xs text-muted-foreground">성공적으로 예약됨</p>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                    res.status === 'confirmed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                  }`}>
+                    {res.status === 'confirmed' ? '예약 확정' : '예약 완료'}
                   </div>
-                </div>
-                <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
-                  예약 확정
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
-            {!history.isLoading && history.data?.length === 0 && (
-              <p className="text-center text-muted-foreground py-8 text-sm">기록이 없습니다.</p>
+            {(!reservations || reservations.length === 0) && (
+              <div className="text-center py-12 text-muted-foreground bg-gray-50/50 rounded-2xl border-2 border-dashed">
+                최근 예약 내역이 없습니다
+              </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </StudentLayout>
   );
