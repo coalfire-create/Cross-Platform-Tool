@@ -113,7 +113,7 @@ export async function registerRoutes(
     }
   });
 
-  // 2. 예약 생성
+  // 2. 예약 생성 (수정됨: 교시 정보가 없어도 현장 질문 가능하도록 변경)
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
 
@@ -123,19 +123,24 @@ export async function registerRoutes(
       const content = req.body.content || null;
 
       if (type === 'onsite') {
-        if (!scheduleId) return res.status(400).json({ message: "교시 정보가 없습니다." });
+        // ✨ [수정 완료] 기존의 '교시 정보가 없습니다' 에러를 발생시키던 코드를 삭제했습니다.
+        // if (!scheduleId) return res.status(400).json({ message: "교시 정보가 없습니다." }); 
 
+        // 1. 하루 3회 제한 확인 (이건 유지)
         const dailyCount = await storage.getDailyOnsiteCount(userId, new Date());
         if (dailyCount >= 3) return res.status(403).json({ message: "현장 질문은 하루 3회까지만 가능합니다." });
 
-        const schedule = await storage.getSchedule(scheduleId);
-        const count = await storage.getReservationCount(scheduleId);
+        // 2. 만약 scheduleId가 넘어왔을 때만 마감 여부를 확인 (기존 로직 호환성 유지)
+        if (scheduleId) {
+          const schedule = await storage.getSchedule(scheduleId);
+          const count = await storage.getReservationCount(scheduleId);
 
-        if (!schedule) return res.status(404).json({ message: "존재하지 않는 시간표입니다." });
-        if (count >= schedule.capacity) return res.status(409).json({ message: "마감된 시간입니다." });
+          if (!schedule) return res.status(404).json({ message: "존재하지 않는 시간표입니다." });
+          if (count >= schedule.capacity) return res.status(409).json({ message: "마감된 시간입니다." });
 
-        const hasReserved = await storage.checkUserReserved(userId, scheduleId);
-        if (hasReserved) return res.status(409).json({ message: "이미 예약한 시간입니다." });
+          const hasReserved = await storage.checkUserReserved(userId, scheduleId);
+          if (hasReserved) return res.status(409).json({ message: "이미 예약한 시간입니다." });
+        }
       }
 
       const reservation = await storage.createReservation({
@@ -222,7 +227,7 @@ export async function registerRoutes(
     });
   });
 
-  // ✅ 회원가입: [수정완료] username 누락 에러 방지
+  // ✅ 회원가입
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const { phoneNumber, password } = api.auth.register.input.parse(req.body);
@@ -238,7 +243,6 @@ export async function registerRoutes(
 
       if (!allowed) return res.status(403).json({ message: "명단에 없는 번호" });
 
-      // 🔥 핵심 수정: username에 전화번호를 넣어 Not-Null 제약조건 해결
       const newUser = await storage.createUser({ 
         username: cleanPhone, 
         phoneNumber: cleanPhone, 
