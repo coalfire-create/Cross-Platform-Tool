@@ -18,8 +18,8 @@ export const allowedStudents = pgTable("allowed_students", {
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   // 🔥 [핵심] DB의 username 필수 제약조건과 일치시킵니다.
-  username: text("username").notNull().
-  phoneNumber: text("phone_number").notNull().
+  username: text("username").notNull(),
+  phoneNumber: text("phone_number").notNull(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   seatNumber: integer("seat_number"),
