@@ -212,7 +212,7 @@ export default function StudentReserve() {
                 <div className="space-y-3 px-4">
                   <h2 className="text-2xl font-bold text-gray-900">예약 요청 완료!</h2>
                   <p className="text-gray-600 text-lg leading-relaxed font-medium">
-                    해당 시간대의 조교님이 곧 확인할 예정이니<br/>
+                    답변 가능한 조교가 곧 확인할 예정이니<br/>
                     잠시만 기다려주세요.
                   </p>
                 </div>
