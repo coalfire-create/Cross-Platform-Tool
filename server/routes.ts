@@ -8,10 +8,9 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import multer from "multer";
 import { supabase } from "./db";
-// ✨ [필수] DB 직접 제어를 위한 라이브러리 임포트
 import { db } from "./db"; 
 import { reservations, users, schedules } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm"; // ✨ sql 추가됨!
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -22,6 +21,14 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // ✨✨ [핵심] 서버 시작 시 DB에 'teacher_photo_url' 칸 강제 생성 (에러 방지용) ✨✨
+  try {
+    await db.execute(sql`ALTER TABLE reservations ADD COLUMN IF NOT EXISTS teacher_photo_url text;`);
+    console.log("✅ [System] DB 사진 컬럼 자동 복구 완료");
+  } catch (e) {
+    console.log("ℹ️ [System] DB 점검 (이미 존재하거나 건너뜀)");
+  }
 
   app.set("trust proxy", 1);
   app.use((req, res, next) => {
@@ -71,15 +78,14 @@ export async function registerRoutes(
   }));
 
   // =========================================================
-  // 🚀 [핵심 수정] 주소 완전 분리 (충돌 원천 차단)
+  // 🚀 API Routes
   // =========================================================
 
-  // 1. [선생님용] 모든 예약 조회 (LEFT JOIN 필수)
+  // 1. [선생님용] 모든 예약 조회 (사진 포함)
   app.get("/api/teacher/all", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
     try {
-      // 선생님은 DB에서 모든 데이터를 다 긁어옵니다.
       const data = await db.select({
           id: reservations.id,
           userId: reservations.userId,
@@ -91,13 +97,14 @@ export async function registerRoutes(
           day: schedules.dayOfWeek,
           period: schedules.periodNumber,
           teacherFeedback: reservations.teacherFeedback,
+          teacherPhotoUrl: reservations.teacherPhotoUrl, // ✨ [추가] 선생님 사진 가져오기
           status: reservations.status,
           content: reservations.content,
           type: reservations.type
         })
         .from(reservations)
         .innerJoin(users, eq(reservations.userId, users.id))
-        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 교시가 없어도 가져옴 (현장 질문 해결)
+        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
         .orderBy(desc(reservations.createdAt));
 
       const formatted = data.map(r => ({ 
@@ -113,14 +120,13 @@ export async function registerRoutes(
     }
   });
 
-  // 2. [학생용] 내 예약만 조회 (WHERE 절 필수)
+  // 2. [학생용] 내 예약만 조회 (사진 포함)
   app.get("/api/student/my", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
     try {
       const myId = (req.user as any).id;
 
-      // 학생은 반드시 본인 ID(myId)와 일치하는 것만 가져옵니다.
       const data = await db.select({
           id: reservations.id,
           userId: reservations.userId,
@@ -132,6 +138,7 @@ export async function registerRoutes(
           day: schedules.dayOfWeek,
           period: schedules.periodNumber,
           teacherFeedback: reservations.teacherFeedback,
+          teacherPhotoUrl: reservations.teacherPhotoUrl, // ✨ [추가] 선생님 사진 가져오기
           status: reservations.status,
           content: reservations.content,
           type: reservations.type
@@ -139,7 +146,7 @@ export async function registerRoutes(
         .from(reservations)
         .innerJoin(users, eq(reservations.userId, users.id))
         .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
-        .where(eq(reservations.userId, myId)) // 🔒 [보안 핵심] 내 ID만 필터링
+        .where(eq(reservations.userId, myId))
         .orderBy(desc(reservations.createdAt));
 
       const formatted = data.map(r => ({ 
@@ -155,12 +162,9 @@ export async function registerRoutes(
     }
   });
 
-  // 3. 기존 주소 처리 (혹시 모를 에러 방지용 리다이렉트)
   app.get("/api/reservations", async (req, res) => {
      res.redirect("/api/student/my");
   });
-
-  // =========================================================
 
   app.post("/api/upload", upload.single("file"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일 없음" });
@@ -210,7 +214,7 @@ export async function registerRoutes(
     }
   });
 
-  // 수정/삭제
+  // ✨✨ [핵심 수정] 예약 수정 (PATCH) - 선생님 사진 저장 추가 ✨✨
   app.patch("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
@@ -220,13 +224,25 @@ export async function registerRoutes(
       if (!r) return res.status(404).json({ message: "예약 없음" });
 
       if (user.role === 'teacher') {
-        res.json(await storage.updateReservation(id, { status: req.body.status, teacherFeedback: req.body.teacherFeedback }));
+        // 🚀 선생님일 경우: 여기서 teacherPhotoUrl을 받아서 storage로 넘깁니다!
+        res.json(await storage.updateReservation(id, { 
+          status: req.body.status, 
+          teacherFeedback: req.body.teacherFeedback,
+          teacherPhotoUrl: req.body.teacherPhotoUrl // 👈 여기가 있어야 사진이 저장됩니다!!
+        }));
       } else if (r.userId === user.id) {
-        res.json(await storage.updateReservation(id, { content: req.body.content, photoUrls: req.body.photoUrls }));
+        // 학생일 경우
+        res.json(await storage.updateReservation(id, { 
+          content: req.body.content, 
+          photoUrls: req.body.photoUrls 
+        }));
       } else {
         res.status(403).json({ message: "권한 없음" });
       }
-    } catch (err) { res.status(500).json({ message: "수정 실패" }); }
+    } catch (err) { 
+        console.error("Update Error:", err);
+        res.status(500).json({ message: "수정 실패" }); 
+    }
   });
 
   app.delete("/api/reservations/:id", async (req, res) => {
@@ -242,7 +258,6 @@ export async function registerRoutes(
     } catch (err) { res.status(500).json({ message: "삭제 실패" }); }
   });
 
-  // Auth
   app.post(api.auth.login.path, passport.authenticate('local'), (req, res) => res.json(req.user));
   app.post(api.auth.logout.path, (req, res, next) => {
     req.logout((err) => {

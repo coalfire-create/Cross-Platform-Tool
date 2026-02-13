@@ -18,23 +18,16 @@ import { pool } from "./db";
 const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
-  // Auth
   getUser(id: number): Promise<User | undefined>;
   getUserByPhone(phoneNumber: string): Promise<User | undefined>;
   createUser(user: any): Promise<User>;
-
-  // Whitelist
   getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined>;
   createAllowedStudent(student: Omit<AllowedStudent, "id">): Promise<AllowedStudent>;
   getAllAllowedStudents(): Promise<AllowedStudent[]>;
   getAllowedStudentsCount(): Promise<number>;
-
-  // Schedules
   getSchedules(): Promise<Schedule[]>;
   getSchedule(id: number): Promise<Schedule | undefined>;
   createSchedule(schedule: Omit<Schedule, "id">): Promise<Schedule>;
-
-  // Reservations
   getReservationsBySchedule(scheduleId: number): Promise<Reservation[]>;
   getReservationCount(scheduleId: number): Promise<number>;
   createReservation(reservation: Omit<Reservation, "id" | "createdAt">): Promise<Reservation>;
@@ -45,7 +38,6 @@ export interface IStorage {
   getReservation(id: number): Promise<Reservation | null>;
   deleteReservation(id: number): Promise<void>;
   getDailyOnsiteCount(userId: number, date: Date): Promise<number>;
-
   sessionStore: session.Store;
 }
 
@@ -58,10 +50,6 @@ export class DatabaseStorage implements IStorage {
       createTableIfMissing: true,
     });
   }
-
-  // =================================================================
-  // 🔐 [인증 관련]
-  // =================================================================
 
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -85,10 +73,6 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  // =================================================================
-  // 📋 [명단 관리 (Whitelist)]
-  // =================================================================
-
   async getAllowedStudent(phoneNumber: string): Promise<AllowedStudent | undefined> {
     const [student] = await db.select().from(allowedStudents).where(eq(allowedStudents.phoneNumber, phoneNumber));
     return student;
@@ -108,10 +92,6 @@ export class DatabaseStorage implements IStorage {
     return result.count;
   }
 
-  // =================================================================
-  // ⏰ [스케줄 관리]
-  // =================================================================
-
   async getSchedules(): Promise<Schedule[]> {
     return await db.select().from(schedules);
   }
@@ -125,10 +105,6 @@ export class DatabaseStorage implements IStorage {
     const [newSchedule] = await db.insert(schedules).values(schedule).returning();
     return newSchedule;
   }
-
-  // =================================================================
-  // 📅 [예약 관련]
-  // =================================================================
 
   async getReservationsBySchedule(scheduleId: number): Promise<Reservation[]> {
     return await db.select().from(reservations).where(eq(reservations.scheduleId, scheduleId));
@@ -163,7 +139,7 @@ export class DatabaseStorage implements IStorage {
     return newReservation;
   }
 
-  // 🔒 [학생용] 내 예약만 보기
+  // ✨ [수정됨] 선생님 사진 정보(teacherPhotoUrl) 추가
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
     const result = await db.select({
       id: reservations.id,
@@ -176,8 +152,7 @@ export class DatabaseStorage implements IStorage {
       day: schedules.dayOfWeek,
       period: schedules.periodNumber,
       teacherFeedback: reservations.teacherFeedback,
-      // ✨ [추가됨] 선생님 사진 정보도 가져와야 학생이 봅니다!
-      teacherPhotoUrl: reservations.teacherPhotoUrl, 
+      teacherPhotoUrl: reservations.teacherPhotoUrl, // 👈 여기가 있어야 합니다!
       status: reservations.status,
       content: reservations.content,
       type: reservations.type
@@ -196,7 +171,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // 👩‍🏫 [선생님용] 모든 질문 보기
+  // ✨ [수정됨] 선생님 사진 정보(teacherPhotoUrl) 추가
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
     const query = db.select({
       id: reservations.id,
@@ -209,8 +184,7 @@ export class DatabaseStorage implements IStorage {
       day: schedules.dayOfWeek,
       period: schedules.periodNumber,
       teacherFeedback: reservations.teacherFeedback,
-      // ✨ [추가됨] 선생님 사진 정보도 가져와야 화면에 표시됩니다!
-      teacherPhotoUrl: reservations.teacherPhotoUrl,
+      teacherPhotoUrl: reservations.teacherPhotoUrl, // 👈 여기가 있어야 합니다!
       status: reservations.status,
       content: reservations.content,
       type: reservations.type
