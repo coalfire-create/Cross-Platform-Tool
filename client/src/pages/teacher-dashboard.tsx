@@ -13,11 +13,13 @@ import {
   Clock, 
   CheckCircle2, 
   MessageCircle, 
-  ImageIcon,
-  XCircle 
+  ImageIcon, 
+  XCircle,
+  Footprints,
+  Maximize2 // 아이콘 추가
 } from "lucide-react";
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,13 +32,11 @@ export default function TeacherDashboard() {
   const { toast } = useToast();
   const [feedback, setFeedback] = useState<{ [key: number]: string }>({});
 
-  // ✨✨ [핵심 수정 1] 주소를 선생님 전용인 '/api/teacher/all'로 변경 ✨✨
-  // 이제 서버가 모든 학생의 질문(현장 포함)을 확실하게 보내줍니다.
+  // 선생님 전용 주소 사용
   const { data: reservations, isLoading } = useQuery<Reservation[]>({
     queryKey: ["/api/teacher/all"],
   });
 
-  // 답변/확인 처리 Mutation
   const respondMutation = useMutation({
     mutationFn: async ({ id, feedbackText }: { id: number; feedbackText: string }) => {
       await apiRequest("PATCH", `/api/reservations/${id}`, {
@@ -45,7 +45,6 @@ export default function TeacherDashboard() {
       });
     },
     onSuccess: () => {
-      // ✨✨ [핵심 수정 2] 데이터 갱신 주소도 '/api/teacher/all'로 변경 ✨✨
       queryClient.invalidateQueries({ queryKey: ["/api/teacher/all"] });
       toast({ title: "처리 완료", description: "학생에게 답변이 전달되었습니다." });
       setFeedback({});
@@ -55,7 +54,6 @@ export default function TeacherDashboard() {
     },
   });
 
-  // 예약 취소/반려 Mutation
   const cancelMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("PATCH", `/api/reservations/${id}`, {
@@ -64,7 +62,6 @@ export default function TeacherDashboard() {
       });
     },
     onSuccess: () => {
-      // ✨✨ [핵심 수정 3] 데이터 갱신 주소도 '/api/teacher/all'로 변경 ✨✨
       queryClient.invalidateQueries({ queryKey: ["/api/teacher/all"] });
       toast({ title: "예약 취소", description: "질문이 취소 처리되었습니다." });
     },
@@ -82,8 +79,12 @@ export default function TeacherDashboard() {
 
   // 대기 중인 질문 필터링
   const pendingReservations = reservations?.filter(r => r.status === 'pending') || [];
-  // 완료된 질문 필터링
-  const completedReservations = reservations?.filter(r => r.status === 'answered') || [];
+
+  // '오늘' 처리된 완료 건수만 카운트
+  const completedReservations = reservations?.filter(r => 
+    r.status === 'answered' && 
+    isSameDay(new Date(r.createdAt || new Date()), new Date())
+  ) || [];
 
   return (
     <AdminLayout>
@@ -142,10 +143,9 @@ export default function TeacherDashboard() {
                     <div className="flex flex-col md:flex-row gap-6">
 
                       {/* 1. 질문 정보 섹션 */}
-                      <div className="flex-1 space-y-3">
+                      <div className="flex-1 space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {/* 질문 타입 뱃지 */}
                             <Badge variant="outline" className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${
                               res.type === 'onsite' 
                                 ? "bg-orange-50 text-orange-600 border-orange-200" 
@@ -159,14 +159,12 @@ export default function TeacherDashboard() {
                             </span>
                           </div>
 
-                          {/* 학생 정보 */}
                           <div className="text-right">
                             <span className="text-lg font-bold mr-2">{res.studentName} 학생</span>
                             <Badge variant="secondary" className="text-xs">좌석 {res.seatNumber}</Badge>
                           </div>
                         </div>
 
-                        {/* 질문 내용 */}
                         <div className="bg-gray-50 p-4 rounded-xl text-gray-800 leading-relaxed border border-gray-100">
                           {res.content === "(내용 없음)" || !res.content ? (
                             <span className="text-gray-400 italic">내용 없음 (사진을 확인하세요)</span>
@@ -175,19 +173,43 @@ export default function TeacherDashboard() {
                           )}
                         </div>
 
-                        {/* 사진 보기 버튼 */}
+                        {/* ✨ 사진 미리보기 및 크게 보기 영역 추가 */}
                         {res.photoUrls && res.photoUrls.length > 0 && (
                           <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="gap-2 text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
-                                <ImageIcon className="w-4 h-4" /> 사진 확인하기
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl bg-transparent border-none shadow-none p-0">
+                            <div className="flex flex-col items-start gap-3">
+                              <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                <ImageIcon className="w-4 h-4" /> 첨부 사진
+                              </h4>
+                              {/* 미리보기 이미지 (클릭 시 Dialog 오픈) */}
+                              <DialogTrigger asChild>
+                                <div className="relative group cursor-pointer">
+                                  <img 
+                                    src={res.photoUrls[0]} 
+                                    alt="질문 첨부 사진 미리보기" 
+                                    className="w-auto h-36 rounded-xl border border-gray-200 object-cover shadow-sm transition-all group-hover:brightness-90"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="bg-black/50 text-white p-2 rounded-full">
+                                      <Maximize2 className="w-5 h-5" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </DialogTrigger>
+
+                              {/* 크게 보기 버튼 (Dialog 오픈) */}
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2 text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
+                                  <Maximize2 className="w-4 h-4" /> 사진 크게 보기
+                                </Button>
+                              </DialogTrigger>
+                            </div>
+
+                            {/* 큰 이미지 Dialog 내용 */}
+                            <DialogContent className="max-w-4xl bg-transparent border-none shadow-none p-0 flex items-center justify-center">
                               <img 
                                 src={res.photoUrls[0]} 
-                                alt="질문 첨부 사진" 
-                                className="w-full h-auto rounded-lg shadow-2xl"
+                                alt="질문 첨부 사진 전체" 
+                                className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
                               />
                             </DialogContent>
                           </Dialog>
@@ -198,19 +220,24 @@ export default function TeacherDashboard() {
                       <div className="md:w-80 flex flex-col gap-3 border-l pl-0 md:pl-6 md:border-l-gray-100">
 
                         {res.type === 'onsite' ? (
-                          // 🟧 [현장 질문]일 때: 확인 버튼만 표시
+                          // 🟧 [현장 질문]
                           <div className="h-full flex flex-col justify-center gap-4">
-                            <div className="bg-orange-50 p-4 rounded-lg text-orange-800 text-sm text-center font-medium">
-                              학생이 자리로 찾아오거나<br/>
-                              선생님이 방문하여 지도하는 질문입니다.
+                            <div className="bg-orange-50/80 border border-orange-100 p-5 rounded-2xl flex flex-col items-center justify-center gap-2 text-center shadow-sm">
+                              <div className="p-2 bg-white rounded-full shadow-sm">
+                                 <Footprints className="w-5 h-5 text-orange-500" />
+                              </div>
+                              <p className="text-orange-900 font-bold text-sm">
+                                선생님이 방문하여 지도하는 질문입니다.
+                              </p>
                             </div>
+
                             <Button 
                               onClick={() => respondMutation.mutate({ 
                                 id: res.id, 
                                 feedbackText: "현장 질문 확인 및 지도 완료" 
                               })}
                               disabled={respondMutation.isPending}
-                              className="w-full py-6 text-lg font-bold bg-orange-500 hover:bg-orange-600 shadow-orange-200 shadow-lg"
+                              className="w-full py-6 text-lg font-bold bg-orange-500 hover:bg-orange-600 shadow-orange-200 shadow-lg transition-transform active:scale-95"
                             >
                               {respondMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "확인 완료 (지도 끝)"}
                             </Button>
@@ -223,7 +250,7 @@ export default function TeacherDashboard() {
                             </Button>
                           </div>
                         ) : (
-                          // 🟦 [온라인 질문]일 때: 답변 입력창 표시
+                          // 🟦 [온라인 질문]
                           <div className="flex flex-col gap-3 h-full">
                             <label className="text-sm font-bold flex items-center gap-2 text-blue-700">
                               <MessageCircle className="w-4 h-4" /> 답변 작성

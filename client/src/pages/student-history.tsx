@@ -37,8 +37,7 @@ export default function StudentHistory() {
   const [editImage, setEditImage] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
 
-  // ✨✨ [핵심 수정 1] 주소를 '/api/student/my'로 변경 ✨✨
-  // 이제 서버의 '내 예약만 가져오기' 기능을 호출합니다.
+  // 내 예약만 가져오기
   const { data: reservations, isLoading } = useQuery<Reservation[]>({
     queryKey: ["/api/student/my"], 
   });
@@ -57,7 +56,6 @@ export default function StudentHistory() {
       await apiRequest("DELETE", `/api/reservations/${id}`);
     },
     onSuccess: () => {
-      // ✨✨ [핵심 수정 2] 삭제 후 새로고침할 주소도 변경 ✨✨
       queryClient.invalidateQueries({ queryKey: ["/api/student/my"] });
       toast({ title: "삭제 완료", description: "예약이 취소되었습니다." });
       setSelectedReservation(null);
@@ -95,7 +93,6 @@ export default function StudentHistory() {
       });
     },
     onSuccess: () => {
-      // ✨✨ [핵심 수정 3] 수정 후 새로고침할 주소도 변경 ✨✨
       queryClient.invalidateQueries({ queryKey: ["/api/student/my"] });
       toast({ title: "수정 완료", description: "질문 내용이 수정되었습니다." });
       setSelectedReservation(null);
@@ -313,16 +310,7 @@ export default function StudentHistory() {
                         </div>
                       )}
 
-                      {selectedReservation.teacherFeedback && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                          <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2">
-                            선생님 답변
-                          </h4>
-                          <div className="bg-blue-50/80 p-5 rounded-2xl text-blue-900 text-sm leading-relaxed whitespace-pre-wrap border border-blue-100 shadow-sm">
-                            {selectedReservation.teacherFeedback}
-                          </div>
-                        </div>
-                      )}
+                      {/* 🗑️ [삭제됨] 선생님 답변 UI 섹션이 여기서 완전히 제거되었습니다. */}
                     </>
                   )}
                 </div>
