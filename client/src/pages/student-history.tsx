@@ -4,6 +4,7 @@ import { StudentLayout } from "@/components/layout";
 import {
   Dialog,
   DialogContent,
+  DialogTrigger, // ✨ 추가됨 (사진 크게 보기용)
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea"; 
@@ -23,7 +24,8 @@ import {
   Pencil,
   X,
   Save,
-  Camera
+  Camera,
+  Maximize2 // ✨ 추가됨
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -310,7 +312,49 @@ export default function StudentHistory() {
                         </div>
                       )}
 
-                      {/* 🗑️ [삭제됨] 선생님 답변 UI 섹션이 여기서 완전히 제거되었습니다. */}
+                      {/* ✨✨ [추가됨] 선생님 답변 및 첨부 사진 확인 영역 ✨✨ */}
+                      {selectedReservation.teacherFeedback && (
+                        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                          <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2">
+                            선생님 답변
+                          </h4>
+                          <div className="bg-blue-50/80 p-5 rounded-2xl text-blue-900 text-sm leading-relaxed whitespace-pre-wrap border border-blue-100 shadow-sm">
+                            {selectedReservation.teacherFeedback}
+                          </div>
+
+                          {/* 선생님이 사진을 보냈다면 여기에 표시됨 */}
+                          {selectedReservation.teacherPhotoUrl && (
+                            <div className="mt-3">
+                              <p className="text-xs font-bold text-blue-600 mb-2 flex items-center gap-1">
+                                <ImageIcon className="w-3 h-3" /> 선생님 첨부 풀이
+                              </p>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <div className="relative group cursor-pointer rounded-2xl overflow-hidden border border-blue-200 shadow-sm max-w-xs">
+                                    <img 
+                                      src={selectedReservation.teacherPhotoUrl} 
+                                      alt="선생님 답변 사진" 
+                                      className="w-full h-auto max-h-48 object-cover transition-transform group-hover:scale-105" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                      <div className="opacity-0 group-hover:opacity-100 bg-white/90 px-3 py-1 rounded-full text-xs font-bold text-blue-700 shadow-sm">
+                                        크게 보기
+                                      </div>
+                                    </div>
+                                  </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl bg-transparent border-none shadow-none p-0 flex items-center justify-center">
+                                  <img 
+                                    src={selectedReservation.teacherPhotoUrl} 
+                                    alt="선생님 답변 사진 전체" 
+                                    className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain bg-white" 
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

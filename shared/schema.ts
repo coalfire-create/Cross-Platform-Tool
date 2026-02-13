@@ -17,7 +17,7 @@ export const allowedStudents = pgTable("allowed_students", {
 // 2. 사용자 테이블 (회원가입된 학생/선생님)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  // 🔥 [핵심 추가] DB의 username 필수 제약조건과 일치시킵니다.
+  // 🔥 [핵심] DB의 username 필수 제약조건과 일치시킵니다.
   username: text("username").notNull().unique(), 
   phoneNumber: text("phone_number").notNull().unique(),
   password: text("password").notNull(),
@@ -35,16 +35,17 @@ export const schedules = pgTable("schedules", {
   capacity: integer("capacity").default(4).notNull(),
 });
 
-// 4. 예약 테이블
+// 4. 예약 테이블 (수정됨)
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), 
   scheduleId: integer("schedule_id"), // 현장 질문의 경우 필수
   type: text("type").notNull(), // 'onsite' or 'online'
   content: text("content"), // 질문 내용
-  photoUrls: text("photo_urls").array().default([]).notNull(), // 사진 URL 배열
-  teacherFeedback: text("teacher_feedback"), // 선생님 답변
-  status: text("status").default("pending").notNull(), // 'pending', 'confirmed', 'answered'
+  photoUrls: text("photo_urls").array().default([]).notNull(), // 학생이 올린 사진 URL 배열
+  teacherFeedback: text("teacher_feedback"), // 선생님 답변 텍스트
+  teacherPhotoUrl: text("teacher_photo_url"), // ✨ [추가됨] 선생님이 보낸 첨부 사진 URL
+  status: text("status").default("pending").notNull(), // 'pending', 'confirmed', 'answered', 'cancelled'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
