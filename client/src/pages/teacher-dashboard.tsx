@@ -23,19 +23,17 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
 export default function TeacherDashboard() {
   const { toast } = useToast();
   const [feedback, setFeedback] = useState<{ [key: number]: string }>({});
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // 모든 예약 불러오기 (학생들이 올린 질문)
+  // ✨✨ [핵심 수정 1] 주소를 선생님 전용인 '/api/teacher/all'로 변경 ✨✨
+  // 이제 서버가 모든 학생의 질문(현장 포함)을 확실하게 보내줍니다.
   const { data: reservations, isLoading } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations/list"],
+    queryKey: ["/api/teacher/all"],
   });
 
   // 답변/확인 처리 Mutation
@@ -47,7 +45,8 @@ export default function TeacherDashboard() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations/list"] });
+      // ✨✨ [핵심 수정 2] 데이터 갱신 주소도 '/api/teacher/all'로 변경 ✨✨
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/all"] });
       toast({ title: "처리 완료", description: "학생에게 답변이 전달되었습니다." });
       setFeedback({});
     },
@@ -65,7 +64,8 @@ export default function TeacherDashboard() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations/list"] });
+      // ✨✨ [핵심 수정 3] 데이터 갱신 주소도 '/api/teacher/all'로 변경 ✨✨
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/all"] });
       toast({ title: "예약 취소", description: "질문이 취소 처리되었습니다." });
     },
   });
@@ -194,7 +194,7 @@ export default function TeacherDashboard() {
                         )}
                       </div>
 
-                      {/* 2. 선생님 액션 섹션 (여기가 핵심!) */}
+                      {/* 2. 선생님 액션 섹션 */}
                       <div className="md:w-80 flex flex-col gap-3 border-l pl-0 md:pl-6 md:border-l-gray-100">
 
                         {res.type === 'onsite' ? (
@@ -207,7 +207,7 @@ export default function TeacherDashboard() {
                             <Button 
                               onClick={() => respondMutation.mutate({ 
                                 id: res.id, 
-                                feedbackText: "현장 질문 확인 및 지도 완료" // 자동 입력될 텍스트
+                                feedbackText: "현장 질문 확인 및 지도 완료" 
                               })}
                               disabled={respondMutation.isPending}
                               className="w-full py-6 text-lg font-bold bg-orange-500 hover:bg-orange-600 shadow-orange-200 shadow-lg"

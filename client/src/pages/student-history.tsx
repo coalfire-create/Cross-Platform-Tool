@@ -6,7 +6,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea"; // 입력창 추가
+import { Textarea } from "@/components/ui/textarea"; 
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -32,18 +32,17 @@ export default function StudentHistory() {
   const { toast } = useToast();
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
-  // 수정 모드 상태 관리
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
   const [editImage, setEditImage] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
 
-  // 예약 목록 가져오기
+  // ✨✨ [핵심 수정 1] 주소를 '/api/student/my'로 변경 ✨✨
+  // 이제 서버의 '내 예약만 가져오기' 기능을 호출합니다.
   const { data: reservations, isLoading } = useQuery<Reservation[]>({
-    queryKey: ["/api/reservations"],
+    queryKey: ["/api/student/my"], 
   });
 
-  // 모달이 열릴 때 상태 초기화
   useEffect(() => {
     if (selectedReservation) {
       setIsEditing(false);
@@ -53,13 +52,13 @@ export default function StudentHistory() {
     }
   }, [selectedReservation]);
 
-  // 1. 예약 삭제 (취소) Mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest("DELETE", `/api/reservations/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      // ✨✨ [핵심 수정 2] 삭제 후 새로고침할 주소도 변경 ✨✨
+      queryClient.invalidateQueries({ queryKey: ["/api/student/my"] });
       toast({ title: "삭제 완료", description: "예약이 취소되었습니다." });
       setSelectedReservation(null);
     },
@@ -68,14 +67,12 @@ export default function StudentHistory() {
     },
   });
 
-  // 2. 예약 수정 Mutation
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!selectedReservation) return;
 
-      let photoUrl = selectedReservation.photoUrls?.[0] || ""; // 기존 사진 유지
+      let photoUrl = selectedReservation.photoUrls?.[0] || ""; 
 
-      // 새 사진이 있으면 업로드
       if (editImage) {
         const formData = new FormData();
         formData.append("file", editImage);
@@ -98,9 +95,10 @@ export default function StudentHistory() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      // ✨✨ [핵심 수정 3] 수정 후 새로고침할 주소도 변경 ✨✨
+      queryClient.invalidateQueries({ queryKey: ["/api/student/my"] });
       toast({ title: "수정 완료", description: "질문 내용이 수정되었습니다." });
-      setSelectedReservation(null); // 모달 닫기
+      setSelectedReservation(null);
     },
     onError: (error: Error) => {
       toast({ title: "수정 실패", description: error.message, variant: "destructive" });
@@ -127,7 +125,6 @@ export default function StudentHistory() {
     );
   }
 
-  // 상태 뱃지 UI
   const getStatusBadge = (status: string) => {
     const baseClass = "px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5";
     switch (status) {
@@ -156,7 +153,6 @@ export default function StudentHistory() {
           </div>
         </div>
 
-        {/* 리스트 영역 */}
         <div className="space-y-4">
           {reservations?.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
@@ -216,12 +212,10 @@ export default function StudentHistory() {
           )}
         </div>
 
-        {/* 상세 보기 및 수정 모달 */}
         <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}>
           <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
             {selectedReservation && (
               <>
-                {/* 1. 모달 헤더 */}
                 <div className={`px-6 py-5 border-b border-gray-100 flex items-center justify-between ${
                    selectedReservation.type === 'onsite' ? 'bg-orange-50/50' : 'bg-blue-50/50'
                 }`}>
@@ -244,8 +238,6 @@ export default function StudentHistory() {
                 </div>
 
                 <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-
-                  {/* === 수정 모드 (isEditing === true) === */}
                   {isEditing ? (
                     <div className="space-y-6 animate-in fade-in zoom-in duration-200">
                       <div className="space-y-2">
@@ -292,9 +284,7 @@ export default function StudentHistory() {
                       </div>
                     </div>
                   ) : (
-                    /* === 조회 모드 (isEditing === false) === */
                     <>
-                      {/* 질문 내용 */}
                       <div className="space-y-3">
                         <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                           질문 내용
@@ -308,7 +298,6 @@ export default function StudentHistory() {
                         </div>
                       </div>
 
-                      {/* 첨부 사진 */}
                       {selectedReservation.photoUrls && selectedReservation.photoUrls.length > 0 && (
                         <div className="space-y-3">
                           <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -324,7 +313,6 @@ export default function StudentHistory() {
                         </div>
                       )}
 
-                      {/* 선생님 답변 */}
                       {selectedReservation.teacherFeedback && (
                         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
                           <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2">
@@ -339,10 +327,8 @@ export default function StudentHistory() {
                   )}
                 </div>
 
-                {/* 3. 하단 버튼 영역 */}
                 <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-100">
                   {isEditing ? (
-                    // 수정 모드 버튼 (취소, 저장)
                     <>
                       <Button 
                         variant="ghost" 
@@ -361,7 +347,6 @@ export default function StudentHistory() {
                       </Button>
                     </>
                   ) : (
-                    // 조회 모드 버튼 (닫기, 수정, 삭제)
                     <>
                       <Button 
                         variant="ghost" 
@@ -371,7 +356,6 @@ export default function StudentHistory() {
                         닫기
                       </Button>
 
-                      {/* 대기중(pending) 상태일 때만 수정/삭제 가능 */}
                       {selectedReservation.status === 'pending' && (
                         <>
                           <Button 

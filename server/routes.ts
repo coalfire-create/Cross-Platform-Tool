@@ -8,7 +8,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import multer from "multer";
 import { supabase } from "./db";
-// ✨ [추가됨] 직접 DB 조회를 위한 라이브러리 추가
+// ✨ [필수] DB 직접 제어를 위한 라이브러리 임포트
 import { db } from "./db"; 
 import { reservations, users, schedules } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
@@ -70,9 +70,98 @@ export async function registerRoutes(
     } catch (err) { return done(err); }
   }));
 
-  // ================= API Routes =================
+  // =========================================================
+  // 🚀 [핵심 수정] 주소 완전 분리 (충돌 원천 차단)
+  // =========================================================
 
-  // 1. 업로드
+  // 1. [선생님용] 모든 예약 조회 (LEFT JOIN 필수)
+  app.get("/api/teacher/all", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      // 선생님은 DB에서 모든 데이터를 다 긁어옵니다.
+      const data = await db.select({
+          id: reservations.id,
+          userId: reservations.userId,
+          scheduleId: reservations.scheduleId,
+          photoUrls: reservations.photoUrls,
+          createdAt: reservations.createdAt,
+          studentName: users.name,
+          seatNumber: users.seatNumber,
+          day: schedules.dayOfWeek,
+          period: schedules.periodNumber,
+          teacherFeedback: reservations.teacherFeedback,
+          status: reservations.status,
+          content: reservations.content,
+          type: reservations.type
+        })
+        .from(reservations)
+        .innerJoin(users, eq(reservations.userId, users.id))
+        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 교시가 없어도 가져옴 (현장 질문 해결)
+        .orderBy(desc(reservations.createdAt));
+
+      const formatted = data.map(r => ({ 
+        ...r, 
+        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
+        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
+        period: r.period || 0
+      }));
+      res.json(formatted);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "선생님 데이터 로딩 실패" });
+    }
+  });
+
+  // 2. [학생용] 내 예약만 조회 (WHERE 절 필수)
+  app.get("/api/student/my", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    try {
+      const myId = (req.user as any).id;
+
+      // 학생은 반드시 본인 ID(myId)와 일치하는 것만 가져옵니다.
+      const data = await db.select({
+          id: reservations.id,
+          userId: reservations.userId,
+          scheduleId: reservations.scheduleId,
+          photoUrls: reservations.photoUrls,
+          createdAt: reservations.createdAt,
+          studentName: users.name,
+          seatNumber: users.seatNumber,
+          day: schedules.dayOfWeek,
+          period: schedules.periodNumber,
+          teacherFeedback: reservations.teacherFeedback,
+          status: reservations.status,
+          content: reservations.content,
+          type: reservations.type
+        })
+        .from(reservations)
+        .innerJoin(users, eq(reservations.userId, users.id))
+        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
+        .where(eq(reservations.userId, myId)) // 🔒 [보안 핵심] 내 ID만 필터링
+        .orderBy(desc(reservations.createdAt));
+
+      const formatted = data.map(r => ({ 
+        ...r, 
+        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
+        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
+        period: r.period || 0
+      }));
+      res.json(formatted);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ message: "학생 데이터 로딩 실패" });
+    }
+  });
+
+  // 3. 기존 주소 처리 (혹시 모를 에러 방지용 리다이렉트)
+  app.get("/api/reservations", async (req, res) => {
+     res.redirect("/api/student/my");
+  });
+
+  // =========================================================
+
   app.post("/api/upload", upload.single("file"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일 없음" });
     try {
@@ -85,7 +174,6 @@ export async function registerRoutes(
     } catch (error: any) { res.status(500).json({ message: error.message }); }
   });
 
-  // 2. 예약 생성
   app.post(api.reservations.create.path, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "로그인이 필요합니다." });
     try {
@@ -122,90 +210,7 @@ export async function registerRoutes(
     }
   });
 
-  // ✨✨ [핵심 수정 1] 학생용 조회 - 직접 DB에서 내 ID로 필터링 ✨✨
-  app.get(api.reservations.myHistory.path, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-
-    try {
-      const myId = (req.user as any).id;
-
-      // storage 함수를 안 쓰고 여기서 직접 조회합니다.
-      const data = await db.select({
-          id: reservations.id,
-          userId: reservations.userId,
-          scheduleId: reservations.scheduleId,
-          photoUrls: reservations.photoUrls,
-          createdAt: reservations.createdAt,
-          studentName: users.name,
-          seatNumber: users.seatNumber,
-          day: schedules.dayOfWeek,
-          period: schedules.periodNumber,
-          teacherFeedback: reservations.teacherFeedback,
-          status: reservations.status,
-          content: reservations.content,
-          type: reservations.type
-        })
-        .from(reservations)
-        .innerJoin(users, eq(reservations.userId, users.id))
-        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
-        .where(eq(reservations.userId, myId)) // 🔒 절대적으로 내 ID만 조회
-        .orderBy(desc(reservations.createdAt));
-
-      const formatted = data.map(r => ({ 
-        ...r, 
-        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
-        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
-        period: r.period || 0
-      }));
-
-      res.json(formatted);
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ message: "조회 실패" });
-    }
-  });
-
-  // ✨✨ [핵심 수정 2] 선생님용 조회 - LEFT JOIN으로 모든 질문 강제 조회 ✨✨
-  app.get(api.reservations.list.path, async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-
-    try {
-      // storage 함수 안 쓰고 직접 조회 (LEFT JOIN 필수)
-      const data = await db.select({
-          id: reservations.id,
-          userId: reservations.userId,
-          scheduleId: reservations.scheduleId,
-          photoUrls: reservations.photoUrls,
-          createdAt: reservations.createdAt,
-          studentName: users.name,
-          seatNumber: users.seatNumber,
-          day: schedules.dayOfWeek,
-          period: schedules.periodNumber,
-          teacherFeedback: reservations.teacherFeedback,
-          status: reservations.status,
-          content: reservations.content,
-          type: reservations.type
-        })
-        .from(reservations)
-        .innerJoin(users, eq(reservations.userId, users.id))
-        .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 🟢 교시 없어도 가져옴
-        .orderBy(desc(reservations.createdAt));
-
-      const formatted = data.map(r => ({ 
-        ...r, 
-        seatNumber: r.seatNumber ? parseInt(r.seatNumber.toString()) : 0,
-        day: r.day || (r.type === 'onsite' ? "현장" : "온라인"),
-        period: r.period || 0
-      }));
-
-      res.json(formatted);
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ message: "목록 조회 실패" });
-    }
-  });
-
-  // 5. 수정/삭제
+  // 수정/삭제
   app.patch("/api/reservations/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
