@@ -163,7 +163,7 @@ export class DatabaseStorage implements IStorage {
     return newReservation;
   }
 
-  // 🔒 [학생용] 내 예약만 보기 (WHERE 절 강화)
+  // 🔒 [학생용] 내 예약만 보기
   async getUserReservations(userId: number): Promise<ReservationWithDetails[]> {
     const result = await db.select({
       id: reservations.id,
@@ -176,6 +176,8 @@ export class DatabaseStorage implements IStorage {
       day: schedules.dayOfWeek,
       period: schedules.periodNumber,
       teacherFeedback: reservations.teacherFeedback,
+      // ✨ [추가됨] 선생님 사진 정보도 가져와야 학생이 봅니다!
+      teacherPhotoUrl: reservations.teacherPhotoUrl, 
       status: reservations.status,
       content: reservations.content,
       type: reservations.type
@@ -183,7 +185,7 @@ export class DatabaseStorage implements IStorage {
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
     .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
-    .where(eq(reservations.userId, userId)) // 👈 [핵심] 로그인한 유저 ID와 일치하는 것만!
+    .where(eq(reservations.userId, userId))
     .orderBy(desc(reservations.createdAt));
 
     return result.map(r => ({ 
@@ -194,7 +196,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // 👩‍🏫 [선생님용] 모든 질문 보기 (LEFT JOIN 적용)
+  // 👩‍🏫 [선생님용] 모든 질문 보기
   async getReservationsForTeacher(day?: string, period?: number): Promise<ReservationWithDetails[]> {
     const query = db.select({
       id: reservations.id,
@@ -207,13 +209,15 @@ export class DatabaseStorage implements IStorage {
       day: schedules.dayOfWeek,
       period: schedules.periodNumber,
       teacherFeedback: reservations.teacherFeedback,
+      // ✨ [추가됨] 선생님 사진 정보도 가져와야 화면에 표시됩니다!
+      teacherPhotoUrl: reservations.teacherPhotoUrl,
       status: reservations.status,
       content: reservations.content,
       type: reservations.type
     })
     .from(reservations)
     .innerJoin(users, eq(reservations.userId, users.id))
-    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id)) // 👈 [핵심] LEFT JOIN으로 교시 없는 질문도 가져옴
+    .leftJoin(schedules, eq(reservations.scheduleId, schedules.id))
     .orderBy(desc(reservations.createdAt));
 
     const result = await query;
