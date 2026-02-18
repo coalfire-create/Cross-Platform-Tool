@@ -11,7 +11,8 @@ import { db } from "./db";
 import { reservations, users } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
+import { ObjectStorageService, objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+import crypto from "crypto";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -19,6 +20,13 @@ const upload = multer({
 });
 
 const objectStorageService = new ObjectStorageService();
+
+function parseUploadPath(path: string): { bucketName: string; objectName: string } {
+  if (!path.startsWith("/")) path = `/${path}`;
+  const parts = path.split("/");
+  if (parts.length < 3) throw new Error("Invalid path");
+  return { bucketName: parts[1], objectName: parts.slice(2).join("/") };
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -187,22 +195,20 @@ export async function registerRoutes(
   app.post("/api/upload", upload.single("file"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
     try {
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const privateDir = objectStorageService.getPrivateObjectDir();
+      const objectId = crypto.randomUUID();
+      const fullPath = `${privateDir}/uploads/${objectId}`;
 
-      const uploadResponse = await fetch(uploadURL, {
-        method: "PUT",
-        body: req.file.buffer,
-        headers: {
-          "Content-Type": req.file.mimetype,
-        },
+      const { bucketName, objectName } = parseUploadPath(fullPath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+
+      await file.save(req.file.buffer, {
+        contentType: req.file.mimetype,
+        resumable: false,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error(`업로드 실패: ${uploadResponse.status}`);
-      }
-
-      res.json({ url: objectPath });
+      res.json({ url: `/objects/uploads/${objectId}` });
     } catch (error: any) {
       console.error("파일 업로드 오류:", error);
       res.status(500).json({ message: error.message || "파일 업로드 실패" });
