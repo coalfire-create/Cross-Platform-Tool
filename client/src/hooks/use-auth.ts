@@ -30,20 +30,20 @@ export function useAuth() {
       });
 
       if (!res.ok) {
-        if (res.status === 401) throw new Error("Invalid phone number or password");
-        throw new Error("Login failed");
+        if (res.status === 401) throw new Error("전화번호 또는 비밀번호가 일치하지 않습니다.");
+        throw new Error("로그인에 실패했습니다.");
       }
       return api.auth.login.responses[200].parse(await res.json());
     },
     onSuccess: (data) => {
       queryClient.setQueryData([api.auth.me.path], data);
-      toast({ title: "Welcome back!", description: `Logged in as ${data.name}` });
+      toast({ title: "로그인 성공", description: `${data.name}님 환영합니다!` });
     },
     onError: (error) => {
-      toast({ 
-        title: "Login failed", 
+      toast({
+        title: "로그인 실패",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -58,36 +58,34 @@ export function useAuth() {
       });
 
       if (!res.ok) {
-        if (res.status === 409) throw new Error("Phone number already registered");
-        if (res.status === 400) throw new Error("Invalid data or not whitelisted");
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Registration failed");
+        throw new Error(errorData.message || "회원가입에 실패했습니다.");
       }
       return api.auth.register.responses[201].parse(await res.json());
     },
     onSuccess: (data) => {
       queryClient.setQueryData([api.auth.me.path], data);
-      toast({ title: "Account created", description: "You are now logged in." });
+      toast({ title: "가입 완료", description: "계정이 생성되었습니다." });
     },
     onError: (error) => {
-      toast({ 
-        title: "Registration failed", 
+      toast({
+        title: "가입 실패",
         description: error.message,
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch(api.auth.logout.path, { 
-        method: api.auth.logout.method, 
-        credentials: "include" 
+      await fetch(api.auth.logout.path, {
+        method: api.auth.logout.method,
+        credentials: "include"
       });
     },
     onSuccess: () => {
       queryClient.setQueryData([api.auth.me.path], null);
-      toast({ title: "Logged out", description: "See you next time!" });
+      toast({ title: "로그아웃", description: "다음에 또 만나요!" });
     },
   });
 

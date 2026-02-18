@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Reservation } from "@shared/schema";
+import { ReservationWithDetails } from "@shared/schema";
 import { AdminLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export default function TeacherDashboard() {
   const [feedbackImages, setFeedbackImages] = useState<{ [key: number]: File | null }>({});
   const [feedbackPreviews, setFeedbackPreviews] = useState<{ [key: number]: string | null }>({});
 
-  const { data: reservations, isLoading } = useQuery<Reservation[]>({
+  const { data: reservations, isLoading } = useQuery<ReservationWithDetails[]>({
     queryKey: ["/api/teacher/all"],
   });
 
