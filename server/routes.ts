@@ -11,7 +11,7 @@ import { db } from "./db";
 import { reservations, users } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { ObjectStorageService, objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
 const upload = multer({
@@ -19,14 +19,10 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const objectStorageService = new ObjectStorageService();
-
-function parseUploadPath(path: string): { bucketName: string; objectName: string } {
-  if (!path.startsWith("/")) path = `/${path}`;
-  const parts = path.split("/");
-  if (parts.length < 3) throw new Error("Invalid path");
-  return { bucketName: parts[1], objectName: parts.slice(2).join("/") };
-}
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 export async function registerRoutes(
   httpServer: Server,
@@ -195,20 +191,23 @@ export async function registerRoutes(
   app.post("/api/upload", upload.single("file"), async (req: any, res) => {
     if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
     try {
-      const privateDir = objectStorageService.getPrivateObjectDir();
-      const objectId = crypto.randomUUID();
-      const fullPath = `${privateDir}/uploads/${objectId}`;
+      const ext = req.file.originalname?.split(".").pop() || "jpg";
+      const fileName = `${crypto.randomUUID()}.${ext}`;
 
-      const { bucketName, objectName } = parseUploadPath(fullPath);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
+      const { data, error } = await supabase.storage
+        .from("uploads")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
 
-      await file.save(req.file.buffer, {
-        contentType: req.file.mimetype,
-        resumable: false,
-      });
+      if (error) throw error;
 
-      res.json({ url: `/objects/uploads/${objectId}` });
+      const { data: publicData } = supabase.storage
+        .from("uploads")
+        .getPublicUrl(data.path);
+
+      res.json({ url: publicData.publicUrl });
     } catch (error: any) {
       console.error("파일 업로드 오류:", error);
       res.status(500).json({ message: error.message || "파일 업로드 실패" });
