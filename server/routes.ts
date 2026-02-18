@@ -29,6 +29,26 @@ export async function registerRoutes(
 
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPL_ID;
 
+  const allowedOrigins = [
+    "https://owlq.co.kr",
+    "https://www.owlq.co.kr",
+  ];
+  if (!isProduction) {
+    allowedOrigins.push("http://localhost:5000");
+  }
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(200);
+    next();
+  });
+
   if (!process.env.SESSION_SECRET && isProduction) {
     console.warn("SESSION_SECRET이 설정되지 않았습니다. 운영 환경에서는 반드시 설정하세요.");
   }
@@ -41,7 +61,7 @@ export async function registerRoutes(
     proxy: true,
     cookie: {
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24,
     },
