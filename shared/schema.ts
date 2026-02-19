@@ -39,6 +39,14 @@ export const reservations = pgTable("reservations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const timetables = pgTable("timetables", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(),
+  photoUrl: text("photo_url").notNull(),
+  uploadedBy: integer("uploaded_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const session = pgTable("session", {
   sid: text("sid").primaryKey(),
   sess: json("sess").notNull(),
@@ -49,11 +57,13 @@ export const insertAllowedStudentSchema = createInsertSchema(allowedStudents);
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertScheduleSchema = createInsertSchema(schedules).omit({ id: true });
 export const insertReservationSchema = createInsertSchema(reservations).omit({ id: true, createdAt: true });
+export const insertTimetableSchema = createInsertSchema(timetables).omit({ id: true, createdAt: true });
 
 export type AllowedStudent = typeof allowedStudents.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Schedule = typeof schedules.$inferSelect;
 export type Reservation = typeof reservations.$inferSelect;
+export type Timetable = typeof timetables.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
