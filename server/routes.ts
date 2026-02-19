@@ -8,7 +8,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import multer from "multer";
 import { db } from "./db";
-import { reservations, users } from "@shared/schema";
+import { reservations, users, timetables } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
@@ -333,6 +333,75 @@ export async function registerRoutes(
 
   app.get(api.schedules.list.path, async (_req, res) => {
     res.json([]);
+  });
+
+  // === 시간표 API ===
+  app.get("/api/timetables", async (_req, res) => {
+    try {
+      const data = await db.select().from(timetables).orderBy(desc(timetables.createdAt));
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ message: "시간표 조회 실패" });
+    }
+  });
+
+  app.get("/api/timetables/:category", async (req, res) => {
+    try {
+      const { category } = req.params;
+      const data = await db.select().from(timetables)
+        .where(eq(timetables.category, category))
+        .orderBy(desc(timetables.createdAt));
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ message: "시간표 조회 실패" });
+    }
+  });
+
+  app.post("/api/timetables", upload.single("file"), async (req: any, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    if (!req.file) return res.status(400).json({ message: "파일이 없습니다." });
+    const category = req.body.category;
+    if (!category) return res.status(400).json({ message: "카테고리가 필요합니다." });
+
+    try {
+      const ext = req.file.originalname?.split(".").pop() || "jpg";
+      const fileName = `timetable/${crypto.randomUUID()}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from("uploads")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const { data: publicData } = supabase.storage
+        .from("uploads")
+        .getPublicUrl(data.path);
+
+      const [inserted] = await db.insert(timetables).values({
+        category,
+        photoUrl: publicData.publicUrl,
+        uploadedBy: (req.user as any).id,
+      }).returning();
+
+      res.json(inserted);
+    } catch (error: any) {
+      console.error("시간표 업로드 오류:", error);
+      res.status(500).json({ message: error.message || "시간표 업로드 실패" });
+    }
+  });
+
+  app.delete("/api/timetables/:id", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(timetables).where(eq(timetables.id, id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "시간표 삭제 실패" });
+    }
   });
 
   app.get("/api/stats/students", async (_req, res) => {

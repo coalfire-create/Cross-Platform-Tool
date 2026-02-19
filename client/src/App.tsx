@@ -9,6 +9,7 @@ import StudentHome from "@/pages/student-home";
 import StudentReserve from "@/pages/student-reserve";
 import StudentHistory from "@/pages/student-history";
 import TeacherDashboard from "@/pages/teacher-dashboard";
+import TimetablePage from "@/pages/timetable";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -54,6 +55,9 @@ function Router() {
       </Route>
       <Route path="/history">
         <ProtectedRoute component={StudentHistory} allowedRoles={['student']} />
+      </Route>
+      <Route path="/timetable">
+        <ProtectedRoute component={TimetablePage} allowedRoles={['student', 'teacher']} />
       </Route>
 
       {/* Teacher/Admin Routes */}
