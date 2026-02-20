@@ -37,12 +37,10 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-8 px-6">
+      <div className="bg-[#7A2425] text-white py-8 px-6">
         <div className="max-w-md mx-auto">
           <div className="flex items-center gap-3 mb-4">
-            <div className="bg-white/10 p-1.5 rounded-xl backdrop-blur-sm">
-              <img src={owlIcon} alt="owlQ" className="w-8 h-8 invert" />
-            </div>
+            <img src={owlIcon} alt="owlQ" className="w-10 h-10" />
             <span className="text-xl font-bold font-display tracking-tight">올빼미Q</span>
           </div>
           <h1 className="text-2xl font-display font-bold mb-2">
