@@ -55,7 +55,7 @@ export default function LandingPage() {
             >
               올빼미
             </h1>
-            <p className="text-muted-foreground text-sm sm:text-base font-medium tracking-wide">
+            <p className="text-4xl sm:text-5xl font-display font-extrabold tracking-tight text-foreground">
               스파르타
             </p>
           </div>
@@ -80,6 +80,12 @@ export default function LandingPage() {
         </div>
       </div>
 
+      <footer
+        className="absolute bottom-6 left-0 right-0 text-center text-xs text-muted-foreground/40 font-medium transition-opacity duration-700"
+        style={{ opacity: stage >= 3 ? 1 : 0 }}
+      >
+        영통이강학원
+      </footer>
     </div>
   );
 }
