@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Loader2, Users } from "lucide-react";
-import owlIcon from "@assets/Gemini_Generated_Image_yxrze7yxrze7yxrz-2_1771590187452.png";
+import igangLogo from "@assets/ikanglogo_clean_1771590117803.png";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -37,17 +37,11 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="bg-[#7A2425] text-white py-8 px-6">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <img src={owlIcon} alt="owlQ" className="w-10 h-10" />
-            <span className="text-xl font-bold font-display tracking-tight">올빼미Q</span>
-          </div>
-          <h1 className="text-2xl font-display font-bold mb-2">
-            질문 예약 시스템
-          </h1>
+      <div className="bg-[#9B3A3A] text-white py-10 px-6">
+        <div className="max-w-md mx-auto flex flex-col items-center">
+          <img src={igangLogo} alt="이강학원" className="w-28 h-28 object-contain mb-3" />
           {studentCount !== null && (
-            <div className="flex items-center gap-2 text-primary-foreground/80 text-sm">
+            <div className="flex items-center gap-2 text-white/70 text-sm">
               <Users className="w-4 h-4" />
               <span>현재 수강생 {studentCount}명</span>
             </div>
