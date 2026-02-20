@@ -38,8 +38,8 @@ export default function LandingPage() {
           >
             <img
               src={igangLogo}
-              alt="이강학원 로고"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-contain brightness-0 invert"
+              alt="영통이강학원 로고"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl"
               data-testid="img-igang-logo"
             />
           </div>
@@ -52,7 +52,7 @@ export default function LandingPage() {
             }}
           >
             <span className="text-white/90 text-base sm:text-lg font-display font-semibold tracking-widest">
-              이강학원
+              영통이강학원
             </span>
           </div>
 
