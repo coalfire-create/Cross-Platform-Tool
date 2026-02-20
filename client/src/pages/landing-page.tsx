@@ -49,12 +49,12 @@ export default function LandingPage() {
               transform: stage >= 2 ? "translateY(0)" : "translateY(30px)",
             }}
           >
-            <div className="inline-flex flex-col items-center gap-1 px-8 py-4 rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm shadow-sm" data-testid="text-landing-title">
-              <span className="text-3xl sm:text-4xl font-display font-extrabold tracking-tight text-foreground leading-tight">
+            <div className="flex items-center gap-4" data-testid="text-landing-title">
+              <span className="text-[2rem] sm:text-[2.5rem] font-display font-extrabold tracking-tight text-foreground leading-none">
                 올빼미
               </span>
-              <div className="w-10 h-[2px] rounded-full bg-primary/40" />
-              <span className="text-3xl sm:text-4xl font-display font-extrabold tracking-[0.15em] text-primary leading-tight">
+              <span className="text-2xl sm:text-3xl font-light text-muted-foreground/30 select-none">/</span>
+              <span className="text-[2rem] sm:text-[2.5rem] font-display font-extrabold tracking-tight text-foreground leading-none">
                 스파르타
               </span>
             </div>
