@@ -24,56 +24,44 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[hsl(var(--primary))]">
-      <img
-        src={owlLogo}
-        alt="올빼미Q 마스코트"
-        className="absolute inset-0 w-full h-full object-contain transition-all duration-[1200ms] ease-out"
-        style={{
-          opacity: stage >= 1 ? 0.12 : 0,
-          transform: stage >= 1 ? "scale(1)" : "scale(1.1)",
-        }}
-        data-testid="img-owl-logo"
-      />
-
-      <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary))] via-[hsl(var(--primary))]/60 to-transparent" />
-
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-20 px-6">
-        <div className="flex flex-col items-center gap-8">
+    <div className="min-h-screen relative overflow-hidden bg-background">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-6">
           <div
             className="transition-all duration-[900ms] ease-out"
             style={{
               opacity: stage >= 1 ? 1 : 0,
-              transform: stage >= 1 ? "translateY(0) scale(1)" : "translateY(40px) scale(0.9)",
+              transform: stage >= 1 ? "translateY(0) scale(1)" : "translateY(50px) scale(0.85)",
             }}
           >
             <img
               src={owlLogo}
-              alt="올빼미Q"
-              className="w-32 h-32 sm:w-40 sm:h-40 object-contain drop-shadow-2xl brightness-0 invert"
+              alt="올빼미Q 마스코트"
+              className="w-52 h-52 sm:w-64 sm:h-64 object-contain"
+              data-testid="img-owl-logo"
             />
           </div>
 
           <div
-            className="text-center space-y-2 transition-all duration-700 ease-out"
+            className="text-center space-y-1.5 transition-all duration-700 ease-out"
             style={{
               opacity: stage >= 2 ? 1 : 0,
               transform: stage >= 2 ? "translateY(0)" : "translateY(30px)",
             }}
           >
             <h1
-              className="text-5xl sm:text-6xl font-display font-extrabold tracking-tight text-white drop-shadow-lg"
+              className="text-4xl sm:text-5xl font-display font-extrabold tracking-tight text-foreground"
               data-testid="text-landing-title"
             >
               올빼미Q
             </h1>
-            <p className="text-white/60 text-sm sm:text-base font-medium tracking-widest uppercase">
+            <p className="text-muted-foreground text-sm sm:text-base font-medium tracking-wide">
               영통이강학원
             </p>
           </div>
 
           <div
-            className="transition-all duration-700 ease-out"
+            className="transition-all duration-700 ease-out mt-2"
             style={{
               opacity: stage >= 3 ? 1 : 0,
               transform: stage >= 3 ? "translateY(0)" : "translateY(20px)",
@@ -82,8 +70,7 @@ export default function LandingPage() {
             <Button
               onClick={() => setLocation("/auth")}
               size="lg"
-              variant="secondary"
-              className="h-14 px-14 rounded-full text-base font-bold shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 gap-2 bg-white text-[hsl(var(--primary))] hover:bg-white/90"
+              className="h-13 px-12 rounded-full text-base font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 gap-2"
               data-testid="button-enter"
             >
               입장
@@ -94,7 +81,7 @@ export default function LandingPage() {
       </div>
 
       <footer
-        className="absolute bottom-6 left-0 right-0 text-center text-xs text-white/30 font-medium transition-opacity duration-700"
+        className="absolute bottom-6 left-0 right-0 text-center text-xs text-muted-foreground/40 font-medium transition-opacity duration-700"
         style={{ opacity: stage >= 3 ? 1 : 0 }}
       >
         영통이강학원
