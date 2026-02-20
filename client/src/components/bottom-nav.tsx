@@ -12,7 +12,6 @@ export function BottomNav() {
     { href: "/home", icon: Home, label: "홈" },
     { href: "/reserve", icon: CalendarClock, label: "예약" },
     { href: "/history", icon: History, label: "기록" },
-    { href: "/timetable", icon: CalendarDays, label: "시간표" },
   ];
 
   return (
@@ -69,9 +68,6 @@ export function DesktopNav() {
         </Link>
         <Link href="/history" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/history" ? "text-primary" : "text-muted-foreground")}>
           예약 내역
-        </Link>
-        <Link href="/timetable" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/timetable" ? "text-primary" : "text-muted-foreground")}>
-          시간표
         </Link>
       </nav>
 

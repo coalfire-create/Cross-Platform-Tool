@@ -38,9 +38,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <Link href="/dashboard" className={`text-sm font-medium transition-colors ${location === "/dashboard" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
             대시보드
           </Link>
-          <Link href="/timetable" className={`text-sm font-medium transition-colors ${location === "/timetable" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-            시간표 관리
-          </Link>
           <button 
             onClick={() => logoutMutation.mutate()}
             className="text-sm font-medium text-muted-foreground hover:text-destructive transition-colors"
