@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import LandingPage from "@/pages/landing-page";
 import AuthPage from "@/pages/auth-page";
 import StudentHome from "@/pages/student-home";
 import StudentReserve from "@/pages/student-reserve";
@@ -20,7 +21,7 @@ function ProtectedRoute({ component: Component, allowedRoles }: { component: any
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setLocation("/");
+      setLocation("/auth");
     } else if (!isLoading && user && allowedRoles && !allowedRoles.includes(user.role)) {
       // Redirect based on role if they try to access unauthorized pages
       if (user.role === 'student') setLocation("/home");
@@ -44,7 +45,8 @@ function ProtectedRoute({ component: Component, allowedRoles }: { component: any
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AuthPage} />
+      <Route path="/" component={LandingPage} />
+      <Route path="/auth" component={AuthPage} />
       
       {/* Student Routes */}
       <Route path="/home">
