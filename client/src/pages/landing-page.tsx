@@ -51,14 +51,12 @@ export default function LandingPage() {
               transform: stage >= 2 ? "translateY(0) scale(1)" : "translateY(50px) scale(0.85)",
             }}
           >
-            <div className="w-44 h-44 sm:w-56 sm:h-56 rounded-[2rem] overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-white/10">
-              <img
-                src={owlLogo}
-                alt="올빼미 스파르타 마스코트"
-                className="w-full h-full object-cover scale-[1.15]"
-                data-testid="img-owl-logo"
-              />
-            </div>
+            <img
+              src={owlLogo}
+              alt="올빼미 스파르타 마스코트"
+              className="w-48 h-48 sm:w-60 sm:h-60 object-contain mix-blend-multiply invert drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+              data-testid="img-owl-logo"
+            />
           </div>
 
           <div
