@@ -53,7 +53,6 @@ export default function LandingPage() {
               <span className="text-[2rem] sm:text-[2.5rem] font-display font-extrabold tracking-tight text-foreground leading-none">
                 올빼미
               </span>
-              <span className="text-2xl sm:text-3xl font-light text-muted-foreground/30 select-none">/</span>
               <span className="text-[2rem] sm:text-[2.5rem] font-display font-extrabold tracking-tight text-foreground leading-none">
                 스파르타
               </span>
