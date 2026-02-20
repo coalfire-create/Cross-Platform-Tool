@@ -28,7 +28,7 @@ export default function LandingPage() {
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
         <div className="flex flex-col items-center">
           <div
-            className="transition-all duration-[800ms] ease-out mb-8"
+            className="transition-all duration-[800ms] ease-out mb-4"
             style={{
               opacity: stage >= 1 ? 1 : 0,
               transform: stage >= 1 ? "translateY(0) scale(1)" : "translateY(-30px) scale(0.9)",
@@ -37,25 +37,37 @@ export default function LandingPage() {
             <img
               src={igangLogo}
               alt="영통이강학원 로고"
-              className="w-28 h-28 sm:w-36 sm:h-36 object-cover rounded-3xl shadow-2xl shadow-black/40"
+              className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-2xl shadow-2xl shadow-black/40"
               data-testid="img-igang-logo"
             />
           </div>
 
           <div
-            className="text-center transition-all duration-700 ease-out mb-12"
+            className="text-center transition-all duration-700 ease-out mb-3"
             style={{
               opacity: stage >= 2 ? 1 : 0,
-              transform: stage >= 2 ? "translateY(0)" : "translateY(30px)",
+              transform: stage >= 2 ? "translateY(0)" : "translateY(20px)",
             }}
           >
             <h1
-              className="text-4xl sm:text-5xl font-display font-extrabold text-white/90 tracking-widest"
+              className="text-5xl sm:text-6xl font-extrabold tracking-tight"
               data-testid="text-landing-title"
             >
-              owlQ
+              <span className="text-white/90">owl</span>
+              <span className="text-[#E8A87C]">Q</span>
             </h1>
-            <div className="mt-3 mx-auto w-10 h-[2px] rounded-full bg-white/20" />
+          </div>
+
+          <div
+            className="text-center transition-all duration-500 ease-out mb-12"
+            style={{
+              opacity: stage >= 2 ? 1 : 0,
+              transform: stage >= 2 ? "translateY(0)" : "translateY(10px)",
+            }}
+          >
+            <p className="text-sm sm:text-base text-white/40 tracking-[0.3em] font-medium">
+              영통이강학원 질문관리
+            </p>
           </div>
 
           <div
