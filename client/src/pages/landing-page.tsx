@@ -23,7 +23,7 @@ export default function LandingPage() {
   }, [user, setLocation]);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#ED3124] flex items-center justify-center">
+    <div className="min-h-screen relative overflow-hidden bg-[#7A2526] flex items-center justify-center">
       <div
         className="flex flex-col items-center transition-all ease-out"
         style={{
