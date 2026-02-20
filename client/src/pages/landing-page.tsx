@@ -36,28 +36,28 @@ export default function LandingPage() {
           >
             <img
               src={owlLogo}
-              alt="올빼미Q 마스코트"
+              alt="올빼미 스파르타 마스코트"
               className="w-52 h-52 sm:w-64 sm:h-64 object-contain"
               data-testid="img-owl-logo"
             />
           </div>
 
           <div
-            className="text-center space-y-1.5 transition-all duration-700 ease-out"
+            className="text-center transition-all duration-700 ease-out"
             style={{
               opacity: stage >= 2 ? 1 : 0,
               transform: stage >= 2 ? "translateY(0)" : "translateY(30px)",
             }}
           >
-            <h1
-              className="text-4xl sm:text-5xl font-display font-extrabold tracking-tight text-foreground"
-              data-testid="text-landing-title"
-            >
-              올빼미
-            </h1>
-            <p className="text-4xl sm:text-5xl font-display font-extrabold tracking-tight text-foreground">
-              스파르타
-            </p>
+            <div className="inline-flex flex-col items-center gap-1 px-8 py-4 rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm shadow-sm" data-testid="text-landing-title">
+              <span className="text-3xl sm:text-4xl font-display font-extrabold tracking-tight text-foreground leading-tight">
+                올빼미
+              </span>
+              <div className="w-10 h-[2px] rounded-full bg-primary/40" />
+              <span className="text-3xl sm:text-4xl font-display font-extrabold tracking-[0.15em] text-primary leading-tight">
+                스파르타
+              </span>
+            </div>
           </div>
 
           <div
