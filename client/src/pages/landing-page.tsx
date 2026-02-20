@@ -44,17 +44,7 @@ export default function LandingPage() {
             />
           </div>
 
-          <div
-            className="transition-all duration-700 ease-out mb-10"
-            style={{
-              opacity: stage >= 1 ? 1 : 0,
-              transform: stage >= 1 ? "translateY(0)" : "translateY(-20px)",
-            }}
-          >
-            <span className="text-white/90 text-base sm:text-lg font-display font-semibold tracking-widest">
-              영통이강학원
-            </span>
-          </div>
+          <div className="mb-10" />
 
           <div
             className="transition-all duration-[900ms] ease-out mb-8"
@@ -66,7 +56,7 @@ export default function LandingPage() {
             <img
               src={owlLogo}
               alt="올빼미 스파르타 마스코트"
-              className="w-48 h-48 sm:w-60 sm:h-60 object-contain brightness-0 invert drop-shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+              className="w-48 h-48 sm:w-60 sm:h-60 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
               data-testid="img-owl-logo"
             />
           </div>
