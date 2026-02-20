@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import igangLogo from "@assets/igang_logo.png";
+import igangLogo from "@assets/image_1771589684406.png";
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export default function LandingPage() {
   }, [user, setLocation]);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#7A2526] flex items-center justify-center">
+    <div className="min-h-screen relative overflow-hidden bg-[#702A28] flex items-center justify-center">
       <div
         className="flex flex-col items-center transition-all ease-out"
         style={{
