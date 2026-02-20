@@ -37,7 +37,7 @@ export default function LandingPage() {
             올빼미Q
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg font-medium">
-            이강학원 질문 예약 시스템
+            영통이강학원
           </p>
         </div>
 
@@ -47,13 +47,13 @@ export default function LandingPage() {
           className="h-14 px-10 rounded-2xl text-base font-bold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 gap-2"
           data-testid="button-enter"
         >
-          올빼미Q 입장
+          입장
           <ArrowRight className="w-5 h-5" />
         </Button>
       </div>
 
       <footer className="absolute bottom-6 text-xs text-muted-foreground/50 font-medium">
-        이강학원
+        영통이강학원
       </footer>
     </div>
   );
