@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { BottomNav, DesktopNav } from "./bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
+import owlIcon from "@assets/Gemini_Generated_Image_yxrze7yxrze7yxrz-2_1771590187452.png";
 
 export function StudentLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -27,9 +28,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-primary/20">
-            Q
-          </div>
+          <img src={owlIcon} alt="owlQ" className="w-10 h-10 rounded-xl shadow-lg shadow-primary/20" />
           <div>
             <h1 className="font-bold text-lg leading-tight">올빼미Q</h1>
             <p className="text-xs text-muted-foreground">관리자: {user?.name}</p>

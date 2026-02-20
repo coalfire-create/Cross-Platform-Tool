@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Home, CalendarClock, History, LogOut, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import owlIcon from "@assets/Gemini_Generated_Image_yxrze7yxrze7yxrz-2_1771590187452.png";
 
 export function BottomNav() {
   const [location] = useLocation();
@@ -55,9 +56,7 @@ export function DesktopNav() {
   return (
     <header className="hidden md:flex items-center justify-between px-8 py-4 bg-background border-b border-border sticky top-0 z-50">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold font-display text-xl">
-          L
-        </div>
+        <img src={owlIcon} alt="owlQ" className="w-8 h-8 rounded-lg" />
         <h1 className="text-xl font-bold text-primary tracking-tight">올빼미Q</h1>
       </div>
 

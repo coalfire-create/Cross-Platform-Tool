@@ -4,7 +4,8 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, ArrowRight, Loader2, Users } from "lucide-react";
+import { ArrowRight, Loader2, Users } from "lucide-react";
+import owlIcon from "@assets/Gemini_Generated_Image_yxrze7yxrze7yxrz-2_1771590187452.png";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -39,8 +40,8 @@ export default function AuthPage() {
       <div className="bg-primary text-primary-foreground py-8 px-6">
         <div className="max-w-md mx-auto">
           <div className="flex items-center gap-3 mb-4">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <GraduationCap className="w-7 h-7" />
+            <div className="bg-white/10 p-1.5 rounded-xl backdrop-blur-sm">
+              <img src={owlIcon} alt="owlQ" className="w-8 h-8 invert" />
             </div>
             <span className="text-xl font-bold font-display tracking-tight">올빼미Q</span>
           </div>
