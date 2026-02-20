@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Loader2, Users } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import igangLogo from "@assets/ikanglogo_clean_1771590117803.png";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -19,14 +19,6 @@ const authSchema = z.object({
 export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [studentCount, setStudentCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch("/api/stats/students")
-      .then(res => res.json())
-      .then(data => setStudentCount(data.count))
-      .catch(() => {});
-  }, []);
 
   if (user) {
     if (user.role === 'teacher') setLocation("/dashboard");
@@ -35,50 +27,62 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <div className="bg-[#9B3A3A] text-white py-10 px-6">
-        <div className="max-w-md mx-auto flex flex-col items-center">
-          <img src={igangLogo} alt="이강학원" className="w-28 h-28 object-contain mb-3" />
-          {studentCount !== null && (
-            <div className="flex items-center gap-2 text-white/70 text-sm">
-              <Users className="w-4 h-4" />
-              <span>현재 수강생 {studentCount}명</span>
-            </div>
-          )}
+    <div className="min-h-screen flex flex-col bg-[#7A2425]">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-10">
+            <h1 className="text-5xl font-extrabold text-white tracking-tight mb-4">
+              올빼미<span className="text-amber-300">Q</span>
+            </h1>
+            <img
+              src={igangLogo}
+              alt="이강학원"
+              className="w-16 h-16 object-contain mx-auto opacity-80"
+              data-testid="img-igang-logo"
+            />
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10">
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6 p-1 h-11 bg-white/10 rounded-xl border border-white/5">
+                <TabsTrigger
+                  value="login"
+                  className="rounded-lg text-sm font-semibold text-white/70 data-[state=active]:bg-white data-[state=active]:text-[#7A2425] data-[state=active]:shadow-sm transition-all"
+                  data-testid="tab-login"
+                >
+                  로그인
+                </TabsTrigger>
+                <TabsTrigger
+                  value="register"
+                  className="rounded-lg text-sm font-semibold text-white/70 data-[state=active]:bg-white data-[state=active]:text-[#7A2425] data-[state=active]:shadow-sm transition-all"
+                  data-testid="tab-register"
+                >
+                  회원가입
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login">
+                <AuthForm
+                  mode="login"
+                  onSubmit={(data) => loginMutation.mutate(data)}
+                  isLoading={loginMutation.isPending}
+                />
+              </TabsContent>
+              <TabsContent value="register">
+                <AuthForm
+                  mode="register"
+                  onSubmit={(data) => registerMutation.mutate(data)}
+                  isLoading={registerMutation.isPending}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
 
-      {/* Form */}
-      <div className="flex-1 px-6 py-8">
-        <div className="max-w-md mx-auto">
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 p-1 h-11 bg-secondary rounded-xl">
-              <TabsTrigger value="login" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all" data-testid="tab-login">
-                로그인
-              </TabsTrigger>
-              <TabsTrigger value="register" className="rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all" data-testid="tab-register">
-                회원가입
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <AuthForm 
-                mode="login" 
-                onSubmit={(data) => loginMutation.mutate(data)} 
-                isLoading={loginMutation.isPending} 
-              />
-            </TabsContent>
-            <TabsContent value="register">
-              <AuthForm 
-                mode="register" 
-                onSubmit={(data) => registerMutation.mutate(data)} 
-                isLoading={registerMutation.isPending} 
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      <footer className="text-center text-white/30 text-xs pb-6 font-medium">
+        영통이강학원
+      </footer>
     </div>
   );
 }
@@ -100,16 +104,16 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
           name="phoneNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>전화번호</FormLabel>
+              <FormLabel className="text-white/80 text-sm">전화번호</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="01012345678" 
-                  {...field} 
-                  className="h-12 rounded-xl bg-muted/50 border-border focus:bg-background transition-colors" 
+                <Input
+                  placeholder="01012345678"
+                  {...field}
+                  className="h-12 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-white/40 focus:bg-white/15 focus:border-white/30 transition-colors"
                   data-testid="input-phone"
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-amber-300" />
             </FormItem>
           )}
         />
@@ -118,25 +122,25 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>비밀번호</FormLabel>
+              <FormLabel className="text-white/80 text-sm">비밀번호</FormLabel>
               <FormControl>
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  {...field} 
-                  className="h-12 rounded-xl bg-muted/50 border-border focus:bg-background transition-colors" 
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  {...field}
+                  className="h-12 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-white/40 focus:bg-white/15 focus:border-white/30 transition-colors"
                   data-testid="input-password"
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-amber-300" />
             </FormItem>
           )}
         />
 
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          className="w-full h-12 rounded-xl font-semibold text-base bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-12 rounded-xl font-semibold text-base bg-white text-[#7A2425] hover:bg-white/90 shadow-lg shadow-black/10 transition-all"
           data-testid="button-submit"
         >
           {isLoading ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
@@ -145,7 +149,7 @@ function AuthForm({ mode, onSubmit, isLoading }: { mode: "login" | "register", o
         </Button>
 
         {mode === "register" && (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-white/50 text-center">
             수강생 명단에 등록된 전화번호만 가입 가능합니다
           </p>
         )}
