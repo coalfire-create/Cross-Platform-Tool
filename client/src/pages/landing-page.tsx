@@ -30,7 +30,7 @@ export default function LandingPage() {
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
         <div className="flex flex-col items-center">
           <div
-            className="transition-all duration-[800ms] ease-out mb-2"
+            className="transition-all duration-[800ms] ease-out mb-6"
             style={{
               opacity: stage >= 1 ? 1 : 0,
               transform: stage >= 1 ? "translateY(0) scale(1)" : "translateY(-30px) scale(0.9)",
@@ -39,12 +39,10 @@ export default function LandingPage() {
             <img
               src={igangLogo}
               alt="영통이강학원 로고"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl"
+              className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-2xl shadow-lg shadow-black/30"
               data-testid="img-igang-logo"
             />
           </div>
-
-          <div className="mb-10" />
 
           <div
             className="transition-all duration-[900ms] ease-out mb-8"
@@ -53,12 +51,14 @@ export default function LandingPage() {
               transform: stage >= 2 ? "translateY(0) scale(1)" : "translateY(50px) scale(0.85)",
             }}
           >
-            <img
-              src={owlLogo}
-              alt="올빼미 스파르타 마스코트"
-              className="w-48 h-48 sm:w-60 sm:h-60 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-              data-testid="img-owl-logo"
-            />
+            <div className="w-44 h-44 sm:w-56 sm:h-56 rounded-[2rem] overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-white/10">
+              <img
+                src={owlLogo}
+                alt="올빼미 스파르타 마스코트"
+                className="w-full h-full object-cover scale-[1.15]"
+                data-testid="img-owl-logo"
+              />
+            </div>
           </div>
 
           <div
@@ -69,11 +69,12 @@ export default function LandingPage() {
             }}
           >
             <h1
-              className="text-[2rem] sm:text-[2.5rem] font-display font-extrabold tracking-wide text-white leading-none"
+              className="text-[1.75rem] sm:text-[2.25rem] font-display font-extrabold text-white/90 leading-relaxed tracking-wider"
               data-testid="text-landing-title"
             >
               올빼미 스파르타
             </h1>
+            <div className="mt-2 mx-auto w-12 h-[2px] rounded-full bg-white/20" />
           </div>
 
           <div
@@ -87,7 +88,7 @@ export default function LandingPage() {
               onClick={() => setLocation("/auth")}
               size="lg"
               variant="secondary"
-              className="h-13 px-14 rounded-full text-base font-bold bg-white/95 text-[#4A1A2A] hover:bg-white shadow-xl shadow-black/20 hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 gap-2"
+              className="h-13 px-14 rounded-full text-base font-bold bg-white/10 text-white border border-white/20 hover:bg-white/20 backdrop-blur-sm shadow-lg shadow-black/10 hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 gap-2"
               data-testid="button-enter"
             >
               입장
@@ -98,7 +99,7 @@ export default function LandingPage() {
       </div>
 
       <footer
-        className="absolute bottom-6 left-0 right-0 text-center text-xs text-white/30 font-medium transition-opacity duration-700"
+        className="absolute bottom-6 left-0 right-0 text-center text-xs text-white/25 font-medium transition-opacity duration-700"
         style={{ opacity: stage >= 4 ? 1 : 0 }}
       >
         영통이강학원
