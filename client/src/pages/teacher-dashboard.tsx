@@ -144,7 +144,7 @@ export default function TeacherDashboard() {
           </Card>
         </div>
 
-        {monthlyStats && monthlyStats.teachers.length > 0 && (
+        {monthlyStats && (
           <Card className="bg-white shadow-sm border-purple-100">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -153,16 +153,20 @@ export default function TeacherDashboard() {
               <BarChart3 className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-4" data-testid="monthly-stats">
-                {monthlyStats.teachers.map((t) => (
-                  <div key={t.answeredBy} className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{t.teacherName}</span>
-                    <Badge variant="secondary" className="text-purple-600 bg-purple-50" data-testid={`stat-teacher-${t.answeredBy}`}>
-                      {t.count}건
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              {monthlyStats.teachers.length > 0 ? (
+                <div className="flex flex-wrap gap-4" data-testid="monthly-stats">
+                  {monthlyStats.teachers.map((t) => (
+                    <div key={t.answeredBy} className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{t.teacherName}</span>
+                      <Badge variant="secondary" className="text-purple-600 bg-purple-50" data-testid={`stat-teacher-${t.answeredBy}`}>
+                        {t.count}건
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground" data-testid="text-no-stats">이번 달 답변 기록이 없습니다.</p>
+              )}
             </CardContent>
           </Card>
         )}
