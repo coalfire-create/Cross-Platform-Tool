@@ -9,7 +9,7 @@ import session from "express-session";
 import multer from "multer";
 import { db } from "./db";
 import { reservations, users, timetables } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
@@ -256,6 +256,7 @@ export async function registerRoutes(
           status: req.body.status,
           teacherFeedback: req.body.teacherFeedback,
           teacherPhotoUrl: req.body.teacherPhotoUrl,
+          ...(req.body.status === 'answered' ? { answeredBy: user.id } : {}),
         }));
       } else if (r.userId === user.id) {
         res.json(await storage.updateReservation(id, {
@@ -543,6 +544,39 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ message: "비밀번호 변경 실패" });
+    }
+  });
+
+  app.get("/api/stats/monthly-answers", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      const data = await db.select({
+        answeredBy: reservations.answeredBy,
+        teacherName: users.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(reservations)
+      .innerJoin(users, eq(reservations.answeredBy, users.id))
+      .where(and(
+        eq(reservations.status, 'answered'),
+        eq(reservations.type, 'online'),
+        gte(reservations.createdAt, monthStart),
+        lte(reservations.createdAt, monthEnd),
+        sql`${reservations.answeredBy} IS NOT NULL`
+      ))
+      .groupBy(reservations.answeredBy, users.name);
+
+      res.json({
+        month: `${now.getFullYear()}년 ${now.getMonth() + 1}월`,
+        teachers: data,
+      });
+    } catch (e) {
+      console.error("월간 통계 오류:", e);
+      res.status(500).json({ message: "통계 조회 실패" });
     }
   });
 

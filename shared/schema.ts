@@ -35,6 +35,7 @@ export const reservations = pgTable("reservations", {
   photoUrls: text("photo_urls").array().default([]).notNull(),
   teacherFeedback: text("teacher_feedback"),
   teacherPhotoUrl: text("teacher_photo_url"),
+  answeredBy: integer("answered_by"),
   status: text("status").default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
