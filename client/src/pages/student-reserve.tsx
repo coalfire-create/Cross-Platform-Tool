@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { MapPin, Globe, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { compressImage } from "@/lib/compress-image";
 import { isSameDay } from "date-fns";
 
 export default function StudentReserve() {
@@ -50,10 +51,10 @@ export default function StudentReserve() {
     mutationFn: async () => {
       let photoUrl = "";
 
-      // 이미지 업로드
       if (selectedImage) {
+        const compressed = await compressImage(selectedImage);
         const formData = new FormData();
-        formData.append("file", selectedImage); // 이것도 'file'로 유지 (아까 고친 것)
+        formData.append("file", compressed);
 
         const res = await fetch("/api/upload", {
           method: "POST",

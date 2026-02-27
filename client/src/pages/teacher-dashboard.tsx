@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { compressImage } from "@/lib/compress-image";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, 
@@ -56,8 +57,9 @@ export default function TeacherDashboard() {
 
       const imageFile = feedbackImages[id];
       if (imageFile) {
+        const compressed = await compressImage(imageFile);
         const formData = new FormData();
-        formData.append("file", imageFile);
+        formData.append("file", compressed);
         const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
         if (!res.ok) throw new Error("이미지 업로드 실패");
         const data = await res.json();

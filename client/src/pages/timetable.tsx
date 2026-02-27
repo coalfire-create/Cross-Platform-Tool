@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Upload, Trash2, Maximize2, ImageIcon, CalendarDays } from "lucide-react";
+import { compressImage } from "@/lib/compress-image";
 import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -90,8 +91,9 @@ function CategorySection({ category, label, isTeacher }: { category: string; lab
 
     setUploading(true);
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       formData.append("category", category);
 
       const res = await fetch("/api/timetables", {

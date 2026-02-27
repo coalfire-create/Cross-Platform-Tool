@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea"; 
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { compressImage } from "@/lib/compress-image";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { 
@@ -74,8 +75,9 @@ export default function StudentHistory() {
       let photoUrl = selectedReservation.photoUrls?.[0] || ""; 
 
       if (editImage) {
+        const compressed = await compressImage(editImage);
         const formData = new FormData();
-        formData.append("file", editImage);
+        formData.append("file", compressed);
 
         const res = await fetch("/api/upload", {
           method: "POST",
