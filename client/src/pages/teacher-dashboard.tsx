@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -17,8 +18,13 @@ import {
   XCircle,
   Footprints,
   Maximize2,
-  Camera, // 추가됨
-  X // 추가됨
+  Camera,
+  X,
+  Users,
+  Search,
+  KeyRound,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 import { format, isSameDay } from "date-fns";
@@ -28,21 +34,90 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
+
+type Student = {
+  id: number;
+  name: string;
+  phoneNumber: string;
+  seatNumber: number | null;
+  role: string;
+  createdAt: string;
+};
 
 export default function TeacherDashboard() {
   const { toast } = useToast();
-  // 피드백 텍스트 관리
   const [feedback, setFeedback] = useState<{ [key: number]: string }>({});
-  // ✨ [추가] 선생님이 업로드할 사진 관리 (예약 ID별로 관리)
   const [feedbackImages, setFeedbackImages] = useState<{ [key: number]: File | null }>({});
   const [feedbackPreviews, setFeedbackPreviews] = useState<{ [key: number]: string | null }>({});
+  const [studentSearch, setStudentSearch] = useState("");
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
+  const [resetStudent, setResetStudent] = useState<Student | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phoneNumber: "", seatNumber: "" });
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: reservations, isLoading } = useQuery<ReservationWithDetails[]>({
     queryKey: ["/api/teacher/all"],
   });
 
-  // ✨ [수정] 사진 업로드 로직이 포함된 답변 전송 함수
+  const { data: students = [] } = useQuery<Student[]>({
+    queryKey: ["/api/admin/students"],
+  });
+
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      await apiRequest("PATCH", `/api/admin/students/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/students"] });
+      setEditStudent(null);
+      toast({ title: "수정 완료", description: "학생 정보가 수정되었습니다." });
+    },
+    onError: () => toast({ title: "수정 실패", variant: "destructive" }),
+  });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/admin/students/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/students"] });
+      setDeleteStudent(null);
+      toast({ title: "삭제 완료", description: "학생 계정이 삭제되었습니다." });
+    },
+    onError: () => toast({ title: "삭제 실패", variant: "destructive" }),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ id, newPassword }: { id: number; newPassword: string }) => {
+      await apiRequest("POST", `/api/admin/students/${id}/reset-password`, { newPassword });
+    },
+    onSuccess: () => {
+      setResetStudent(null);
+      setNewPassword("");
+      toast({ title: "초기화 완료", description: "비밀번호가 초기화되었습니다." });
+    },
+    onError: () => toast({ title: "초기화 실패", variant: "destructive" }),
+  });
+
+  const filteredStudents = students.filter(
+    (s) =>
+      s.name.includes(studentSearch) ||
+      s.phoneNumber.includes(studentSearch.replace(/-/g, "")) ||
+      (s.seatNumber?.toString() || "").includes(studentSearch)
+  );
+
+  const openEdit = (s: Student) => {
+    setEditStudent(s);
+    setEditForm({ name: s.name, phoneNumber: s.phoneNumber, seatNumber: s.seatNumber?.toString() || "" });
+  };
+
+  // 사진 업로드 로직이 포함된 답변 전송 함수
   const respondMutation = useMutation({
     mutationFn: async ({ id, feedbackText }: { id: number; feedbackText: string }) => {
       let photoUrl = "";
@@ -264,7 +339,152 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+
+        {/* 학생 관리 섹션 */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2" data-testid="text-student-section">
+              <Users className="w-5 h-5" /> 학생 관리 ({students.length}명)
+            </h2>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="이름, 전화번호, 좌석번호로 검색"
+              value={studentSearch}
+              onChange={(e) => setStudentSearch(e.target.value)}
+              className="pl-10 bg-white"
+              data-testid="input-student-search"
+            />
+          </div>
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground bg-white rounded-xl border border-dashed">
+              {studentSearch ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {filteredStudents.map((student) => (
+                <Card key={student.id} className="bg-white shadow-sm" data-testid={`card-student-${student.id}`}>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm" data-testid={`text-seat-${student.id}`}>
+                        {student.seatNumber || "-"}
+                      </div>
+                      <div>
+                        <p className="font-semibold" data-testid={`text-name-${student.id}`}>{student.name}</p>
+                        <p className="text-sm text-muted-foreground" data-testid={`text-phone-${student.id}`}>
+                          {student.phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(student)} data-testid={`button-edit-${student.id}`}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setResetStudent(student); setNewPassword(""); }} data-testid={`button-reset-${student.id}`}>
+                        <KeyRound className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteStudent(student)} className="text-destructive hover:text-destructive" data-testid={`button-delete-${student.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 학생 정보 수정 다이얼로그 */}
+      <Dialog open={!!editStudent} onOpenChange={() => setEditStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>학생 정보 수정</DialogTitle>
+            <DialogDescription>학생의 이름, 전화번호, 좌석번호를 수정할 수 있습니다.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">이름</label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} data-testid="input-edit-name" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">전화번호</label>
+              <Input value={editForm.phoneNumber} onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })} data-testid="input-edit-phone" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">좌석번호</label>
+              <Input type="number" value={editForm.seatNumber} onChange={(e) => setEditForm({ ...editForm, seatNumber: e.target.value })} data-testid="input-edit-seat" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditStudent(null)} data-testid="button-edit-cancel">취소</Button>
+            <Button
+              onClick={() => editStudent && updateStudentMutation.mutate({
+                id: editStudent.id,
+                data: { name: editForm.name, phoneNumber: editForm.phoneNumber, seatNumber: parseInt(editForm.seatNumber) || 0 }
+              })}
+              disabled={updateStudentMutation.isPending}
+              data-testid="button-edit-save"
+            >
+              {updateStudentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 학생 삭제 다이얼로그 */}
+      <Dialog open={!!deleteStudent} onOpenChange={() => setDeleteStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>학생 삭제</DialogTitle>
+            <DialogDescription>
+              <strong>{deleteStudent?.name}</strong> 학생의 계정과 모든 질문 기록이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteStudent(null)} data-testid="button-delete-cancel">취소</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteStudent && deleteStudentMutation.mutate(deleteStudent.id)}
+              disabled={deleteStudentMutation.isPending}
+              data-testid="button-delete-confirm"
+            >
+              {deleteStudentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 초기화 다이얼로그 */}
+      <Dialog open={!!resetStudent} onOpenChange={() => setResetStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>비밀번호 초기화</DialogTitle>
+            <DialogDescription><strong>{resetStudent?.name}</strong> 학생의 비밀번호를 초기화합니다.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-sm font-medium mb-1 block">새 비밀번호</label>
+            <Input
+              type="password"
+              placeholder="4자 이상 입력"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              data-testid="input-reset-password"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetStudent(null)} data-testid="button-reset-cancel">취소</Button>
+            <Button
+              onClick={() => resetStudent && resetPasswordMutation.mutate({ id: resetStudent.id, newPassword })}
+              disabled={resetPasswordMutation.isPending || newPassword.length < 4}
+              data-testid="button-reset-confirm"
+            >
+              {resetPasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "초기화"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
