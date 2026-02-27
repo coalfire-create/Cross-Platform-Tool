@@ -11,6 +11,8 @@ import StudentReserve from "@/pages/student-reserve";
 import StudentHistory from "@/pages/student-history";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import TimetablePage from "@/pages/timetable";
+import StudentManagement from "@/pages/student-management";
+import ChangePassword from "@/pages/change-password";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -62,9 +64,17 @@ function Router() {
         <ProtectedRoute component={TimetablePage} allowedRoles={['student', 'teacher']} />
       </Route>
 
+      {/* Student Settings */}
+      <Route path="/settings/password">
+        <ProtectedRoute component={ChangePassword} allowedRoles={['student']} />
+      </Route>
+
       {/* Teacher/Admin Routes */}
       <Route path="/dashboard">
         <ProtectedRoute component={TeacherDashboard} allowedRoles={['teacher']} />
+      </Route>
+      <Route path="/admin/students">
+        <ProtectedRoute component={StudentManagement} allowedRoles={['teacher']} />
       </Route>
 
       <Route component={NotFound} />

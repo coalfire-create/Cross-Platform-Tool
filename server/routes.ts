@@ -404,6 +404,84 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/students", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const students = await storage.getAllRegisteredStudents();
+      res.json(students.map(({ password, ...s }) => s));
+    } catch (e) {
+      res.status(500).json({ message: "학생 목록 조회 실패" });
+    }
+  });
+
+  app.patch("/api/admin/students/:id", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const id = parseInt(req.params.id);
+      const target = await storage.getUser(id);
+      if (!target || target.role !== 'student') return res.status(404).json({ message: "학생을 찾을 수 없습니다." });
+      const { name, seatNumber, phoneNumber } = req.body;
+      const update: any = {};
+      if (name !== undefined && typeof name === 'string') update.name = name;
+      if (seatNumber !== undefined) update.seatNumber = parseInt(seatNumber) || target.seatNumber;
+      if (phoneNumber !== undefined && typeof phoneNumber === 'string') {
+        update.phoneNumber = phoneNumber.replace(/-/g, '');
+        update.username = update.phoneNumber;
+      }
+      const updated = await storage.updateUser(id, update);
+      const { password, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (e) {
+      res.status(500).json({ message: "학생 정보 수정 실패" });
+    }
+  });
+
+  app.delete("/api/admin/students/:id", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const id = parseInt(req.params.id);
+      const target = await storage.getUser(id);
+      if (!target || target.role !== 'student') return res.status(404).json({ message: "학생을 찾을 수 없습니다." });
+      await storage.deleteUser(id);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ message: "학생 삭제 실패" });
+    }
+  });
+
+  app.post("/api/admin/students/:id/reset-password", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const id = parseInt(req.params.id);
+      const target = await storage.getUser(id);
+      if (!target || target.role !== 'student') return res.status(404).json({ message: "학생을 찾을 수 없습니다." });
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 4) return res.status(400).json({ message: "비밀번호는 4자 이상이어야 합니다." });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(id, { password: hashed });
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ message: "비밀번호 초기화 실패" });
+    }
+  });
+
+  app.post("/api/auth/change-password", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 4) return res.status(400).json({ message: "새 비밀번호는 4자 이상이어야 합니다." });
+      const user = await storage.getUser((req.user as any).id);
+      if (!user) return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) return res.status(400).json({ message: "현재 비밀번호가 일치하지 않습니다." });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashed });
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ message: "비밀번호 변경 실패" });
+    }
+  });
+
   app.get("/api/stats/students", async (_req, res) => {
     try {
       const count = await storage.getAllowedStudentsCount();

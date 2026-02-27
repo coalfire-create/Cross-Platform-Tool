@@ -38,6 +38,9 @@ export interface IStorage {
   getReservation(id: number): Promise<Reservation | null>;
   deleteReservation(id: number): Promise<void>;
   getDailyOnsiteCount(userId: number, date: Date): Promise<number>;
+  getAllRegisteredStudents(): Promise<User[]>;
+  updateUser(id: number, update: Partial<User>): Promise<User>;
+  deleteUser(id: number): Promise<void>;
   sessionStore: session.Store;
 }
 
@@ -230,6 +233,21 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReservation(id: number): Promise<void> {
     await db.delete(reservations).where(eq(reservations.id, id));
+  }
+
+  async getAllRegisteredStudents(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'student')).orderBy(users.seatNumber);
+  }
+
+  async updateUser(id: number, update: Partial<User>): Promise<User> {
+    const [updated] = await db.update(users).set(update).where(eq(users.id, id)).returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(reservations).where(eq(reservations.userId, id));
+    await db.delete(users).where(eq(users.id, id));
   }
 }
 

@@ -10,6 +10,8 @@ This is a cross-platform web application for a Korean academy (학원) that enab
 - Photo upload requirement for question submissions
 - Teacher dashboard with seat-number-prominent display for quick student identification
 - Mobile-first design with bottom navigation for students
+- Student management admin tool (teacher can view/edit/delete registered students, reset passwords)
+- Password change feature for students (via settings page)
 
 ## User Preferences
 

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, CalendarClock, History, LogOut, CalendarDays } from "lucide-react";
+import { Home, CalendarClock, History, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import owlIcon from "@assets/Gemini_Generated_Image_yxrze7yxrze7yxrz-2_1771590187452.png";
@@ -12,6 +12,7 @@ export function BottomNav() {
     { href: "/home", icon: Home, label: "홈" },
     { href: "/reserve", icon: CalendarClock, label: "예약" },
     { href: "/history", icon: History, label: "기록" },
+    { href: "/settings/password", icon: Settings, label: "설정" },
   ];
 
   return (
@@ -68,6 +69,9 @@ export function DesktopNav() {
         </Link>
         <Link href="/history" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/history" ? "text-primary" : "text-muted-foreground")}>
           예약 내역
+        </Link>
+        <Link href="/settings/password" className={cn("text-sm font-medium transition-colors hover:text-primary", location === "/settings/password" ? "text-primary" : "text-muted-foreground")}>
+          비밀번호 변경
         </Link>
       </nav>
 
