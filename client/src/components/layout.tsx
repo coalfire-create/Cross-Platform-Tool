@@ -26,30 +26,30 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <img src={owlIcon} alt="owlQ" className="w-10 h-10 rounded-xl shadow-lg shadow-primary/20" />
-          <div>
-            <h1 className="font-bold text-lg leading-tight">올빼미Q</h1>
-            <p className="text-xs text-muted-foreground">관리자: {user?.name}</p>
+      <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
+          <img src={owlIcon} alt="owlQ" className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl shadow-lg shadow-primary/20 shrink-0" />
+          <div className="min-w-0">
+            <h1 className="font-bold text-base sm:text-lg leading-tight">올빼미Q</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{user?.name}</p>
           </div>
         </div>
-        <nav className="flex items-center gap-4">
-          <Link href="/dashboard" className={`text-sm font-medium transition-colors ${location === "/dashboard" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+        <nav className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <Link href="/dashboard" className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${location === "/dashboard" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
             대시보드
           </Link>
-          <Link href="/admin/students" className={`text-sm font-medium transition-colors ${location === "/admin/students" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-            학생 관리
+          <Link href="/admin/students" className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${location === "/admin/students" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+            학생관리
           </Link>
           <button 
             onClick={() => logoutMutation.mutate()}
-            className="text-sm font-medium text-muted-foreground hover:text-destructive transition-colors"
+            className="text-xs sm:text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-destructive transition-colors"
           >
             로그아웃
           </button>
         </nav>
       </header>
-      <main className="flex-1 container max-w-6xl mx-auto p-6">
+      <main className="flex-1 container max-w-6xl mx-auto p-3 sm:p-6">
         <div className="fade-in">
           {children}
         </div>

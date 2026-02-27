@@ -116,62 +116,60 @@ export default function StudentManagement() {
           </div>
         ) : (
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="table-students">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground w-16">좌석</th>
-                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground">이름</th>
-                    <th className="text-left py-3 px-4 font-semibold text-muted-foreground hidden sm:table-cell">전화번호</th>
-                    <th className="text-center py-3 px-4 font-semibold text-muted-foreground w-20">가입</th>
-                    <th className="text-right py-3 px-4 font-semibold text-muted-foreground w-36">관리</th>
+            <table className="w-full text-sm table-fixed" data-testid="table-students">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="text-left py-2 px-2 sm:px-4 font-semibold text-muted-foreground w-[52px] sm:w-16">좌석</th>
+                  <th className="text-left py-2 px-2 sm:px-4 font-semibold text-muted-foreground w-[60px] sm:w-auto">이름</th>
+                  <th className="text-left py-2 px-2 sm:px-4 font-semibold text-muted-foreground hidden sm:table-cell">전화번호</th>
+                  <th className="text-center py-2 px-1 sm:px-4 font-semibold text-muted-foreground w-[40px] sm:w-16">가입</th>
+                  <th className="text-right py-2 px-1 sm:px-4 font-semibold text-muted-foreground w-[100px] sm:w-36">관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12 text-muted-foreground">
+                      {search ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-muted-foreground">
-                        {search ? "검색 결과가 없습니다." : "등록된 학생이 없습니다."}
+                ) : (
+                  filtered.map((student) => (
+                    <tr key={student.phoneNumber} className="border-b last:border-b-0 hover:bg-gray-50/50 transition-colors" data-testid={`row-student-${student.seatNumber}`}>
+                      <td className="py-2 px-2 sm:px-4">
+                        <span className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-bold text-xs" data-testid={`text-seat-${student.seatNumber}`}>
+                          {student.seatNumber}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 font-medium whitespace-nowrap text-sm" data-testid={`text-name-${student.seatNumber}`}>{student.name}</td>
+                      <td className="py-2 px-2 sm:px-4 text-muted-foreground hidden sm:table-cell" data-testid={`text-phone-${student.seatNumber}`}>{formatPhone(student.phoneNumber)}</td>
+                      <td className="py-2 px-1 sm:px-4 text-center">
+                        {student.isRegistered ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
+                        )}
+                      </td>
+                      <td className="py-2 px-1 sm:px-4 text-right">
+                        <div className="flex items-center justify-end gap-0 sm:gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => openEdit(student)} data-testid={`button-edit-${student.seatNumber}`}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          {student.isRegistered && student.userId && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => { setResetStudent(student); setNewPassword(""); }} data-testid={`button-reset-${student.seatNumber}`}>
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive" onClick={() => setDeleteStudent(student)} data-testid={`button-delete-${student.seatNumber}`}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    filtered.map((student) => (
-                      <tr key={student.phoneNumber} className="border-b last:border-b-0 hover:bg-gray-50/50 transition-colors" data-testid={`row-student-${student.seatNumber}`}>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-xs" data-testid={`text-seat-${student.seatNumber}`}>
-                            {student.seatNumber}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-medium" data-testid={`text-name-${student.seatNumber}`}>{student.name}</td>
-                        <td className="py-3 px-4 text-muted-foreground hidden sm:table-cell" data-testid={`text-phone-${student.seatNumber}`}>{formatPhone(student.phoneNumber)}</td>
-                        <td className="py-3 px-4 text-center">
-                          {student.isRegistered ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(student)} data-testid={`button-edit-${student.seatNumber}`}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            {student.isRegistered && student.userId && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setResetStudent(student); setNewPassword(""); }} data-testid={`button-reset-${student.seatNumber}`}>
-                                <KeyRound className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteStudent(student)} data-testid={`button-delete-${student.seatNumber}`}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
