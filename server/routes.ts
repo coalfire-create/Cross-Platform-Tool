@@ -414,6 +414,70 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/allowed-students-full", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const allowed = await storage.getAllAllowedStudents();
+      const registered = await storage.getAllRegisteredStudents();
+      const registeredMap = new Map(registered.map(u => [u.phoneNumber, u]));
+      const result = allowed.map(a => ({
+        name: a.name,
+        phoneNumber: a.phoneNumber,
+        seatNumber: a.seatNumber,
+        isRegistered: registeredMap.has(a.phoneNumber),
+        userId: registeredMap.get(a.phoneNumber)?.id || null,
+      }));
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "학생 목록 조회 실패" });
+    }
+  });
+
+  app.patch("/api/admin/allowed-students/:phoneNumber", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const { phoneNumber } = req.params;
+      const { name, seatNumber, newPhoneNumber } = req.body;
+      const update: any = {};
+      if (name !== undefined && typeof name === 'string') update.name = name;
+      if (seatNumber !== undefined) update.seatNumber = parseInt(seatNumber);
+      if (newPhoneNumber !== undefined) update.phoneNumber = newPhoneNumber.replace(/-/g, '');
+      const updated = await storage.updateAllowedStudent(phoneNumber, update);
+
+      const registeredUser = await storage.getUserByPhone(phoneNumber);
+      if (registeredUser) {
+        const userUpdate: any = {};
+        if (update.name) userUpdate.name = update.name;
+        if (update.seatNumber !== undefined) userUpdate.seatNumber = update.seatNumber;
+        if (update.phoneNumber) {
+          userUpdate.phoneNumber = update.phoneNumber;
+          userUpdate.username = update.phoneNumber;
+        }
+        await storage.updateUser(registeredUser.id, userUpdate);
+      }
+
+      res.json(updated);
+    } catch (e) {
+      console.error("학생 수정 오류:", e);
+      res.status(500).json({ message: "학생 정보 수정 실패" });
+    }
+  });
+
+  app.delete("/api/admin/allowed-students/:phoneNumber", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const { phoneNumber } = req.params;
+      const registeredUser = await storage.getUserByPhone(phoneNumber);
+      if (registeredUser) {
+        await storage.deleteUser(registeredUser.id);
+      }
+      await storage.deleteAllowedStudent(phoneNumber);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ message: "학생 삭제 실패" });
+    }
+  });
+
   app.patch("/api/admin/students/:id", async (req, res) => {
     if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
     try {

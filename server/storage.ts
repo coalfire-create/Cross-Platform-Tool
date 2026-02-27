@@ -41,6 +41,8 @@ export interface IStorage {
   getAllRegisteredStudents(): Promise<User[]>;
   updateUser(id: number, update: Partial<User>): Promise<User>;
   deleteUser(id: number): Promise<void>;
+  updateAllowedStudent(phoneNumber: string, update: Partial<AllowedStudent>): Promise<AllowedStudent>;
+  deleteAllowedStudent(phoneNumber: string): Promise<void>;
   sessionStore: session.Store;
 }
 
@@ -248,6 +250,16 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: number): Promise<void> {
     await db.delete(reservations).where(eq(reservations.userId, id));
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  async updateAllowedStudent(phoneNumber: string, update: Partial<AllowedStudent>): Promise<AllowedStudent> {
+    const [updated] = await db.update(allowedStudents).set(update).where(eq(allowedStudents.phoneNumber, phoneNumber)).returning();
+    if (!updated) throw new Error("Student not found");
+    return updated;
+  }
+
+  async deleteAllowedStudent(phoneNumber: string): Promise<void> {
+    await db.delete(allowedStudents).where(eq(allowedStudents.phoneNumber, phoneNumber));
   }
 }
 
