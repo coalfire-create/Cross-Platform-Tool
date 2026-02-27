@@ -31,7 +31,7 @@ export async function registerRoutes(
 
   app.set("trust proxy", 1);
 
-  const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPL_ID;
+  const isProduction = process.env.NODE_ENV === "production";
 
   const allowedOrigins = [
     "https://owlq.co.kr",
