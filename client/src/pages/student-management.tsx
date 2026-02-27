@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Users, Search, Pencil, Trash2, KeyRound, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Users, Search, Pencil, Trash2, KeyRound, Loader2, CheckCircle2, XCircle, Plus } from "lucide-react";
 
 type AllowedStudentFull = {
   name: string;
@@ -26,6 +26,8 @@ export default function StudentManagement() {
   const [resetStudent, setResetStudent] = useState<AllowedStudentFull | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phoneNumber: "", seatNumber: "" });
   const [newPassword, setNewPassword] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", phoneNumber: "", seatNumber: "" });
 
   const { data: students = [], isLoading } = useQuery<AllowedStudentFull[]>({
     queryKey: ["/api/admin/allowed-students-full"],
@@ -67,6 +69,22 @@ export default function StudentManagement() {
     onError: () => toast({ title: "초기화 실패", variant: "destructive" }),
   });
 
+  const addMutation = useMutation({
+    mutationFn: async (data: { name: string; phoneNumber: string; seatNumber: string }) => {
+      const res = await apiRequest("POST", "/api/admin/allowed-students", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/allowed-students-full"] });
+      setShowAdd(false);
+      setAddForm({ name: "", phoneNumber: "", seatNumber: "" });
+      toast({ title: "추가 완료", description: "학생이 명단에 추가되었습니다." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "추가 실패", description: error.message || "학생 추가에 실패했습니다.", variant: "destructive" });
+    },
+  });
+
   const filtered = students.filter(
     (s) =>
       s.name.includes(search) ||
@@ -89,13 +107,16 @@ export default function StudentManagement() {
             <Users className="w-6 h-6 text-primary" />
             <h2 className="text-xl font-bold" data-testid="text-page-title">학생 관리</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-sm" data-testid="text-student-count">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Badge variant="outline" className="text-xs sm:text-sm" data-testid="text-student-count">
               전체 {students.length}명
             </Badge>
-            <Badge variant="secondary" className="text-sm">
+            <Badge variant="secondary" className="text-xs sm:text-sm">
               가입 {students.filter(s => s.isRegistered).length}명
             </Badge>
+            <Button size="sm" onClick={() => { setShowAdd(true); setAddForm({ name: "", phoneNumber: "", seatNumber: "" }); }} data-testid="button-add-student">
+              <Plus className="w-4 h-4 mr-1" /> 추가
+            </Button>
           </div>
         </div>
 
@@ -262,6 +283,55 @@ export default function StudentManagement() {
               data-testid="button-reset-confirm"
             >
               {resetPasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "초기화"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>학생 추가</DialogTitle>
+            <DialogDescription>새 학생을 명단에 추가합니다. 추가 후 학생이 직접 회원가입할 수 있습니다.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">이름</label>
+              <Input
+                placeholder="학생 이름"
+                value={addForm.name}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                data-testid="input-add-name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">전화번호</label>
+              <Input
+                placeholder="01012345678"
+                value={addForm.phoneNumber}
+                onChange={(e) => setAddForm({ ...addForm, phoneNumber: e.target.value })}
+                data-testid="input-add-phone"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">좌석번호</label>
+              <Input
+                type="number"
+                placeholder="좌석번호"
+                value={addForm.seatNumber}
+                onChange={(e) => setAddForm({ ...addForm, seatNumber: e.target.value })}
+                data-testid="input-add-seat"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAdd(false)} data-testid="button-add-cancel">취소</Button>
+            <Button
+              onClick={() => addMutation.mutate(addForm)}
+              disabled={addMutation.isPending || !addForm.name || !addForm.phoneNumber || !addForm.seatNumber}
+              data-testid="button-add-confirm"
+            >
+              {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "추가"}
             </Button>
           </DialogFooter>
         </DialogContent>

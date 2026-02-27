@@ -415,6 +415,30 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/allowed-students", async (req, res) => {
+    if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
+    try {
+      const { name, phoneNumber, seatNumber } = req.body;
+      if (!name || !phoneNumber || seatNumber === undefined) {
+        return res.status(400).json({ message: "이름, 전화번호, 좌석번호를 모두 입력해주세요." });
+      }
+      const cleanPhone = phoneNumber.replace(/-/g, '');
+      const existing = await storage.getAllowedStudent(cleanPhone);
+      if (existing) {
+        return res.status(409).json({ message: "이미 등록된 전화번호입니다." });
+      }
+      const student = await storage.createAllowedStudent({
+        name,
+        phoneNumber: cleanPhone,
+        seatNumber: parseInt(seatNumber),
+      });
+      res.json(student);
+    } catch (e) {
+      console.error("학생 추가 오류:", e);
+      res.status(500).json({ message: "학생 추가 실패" });
+    }
+  });
+
   app.get("/api/admin/allowed-students-full", async (req, res) => {
     if (!req.user || (req.user as any).role !== 'teacher') return res.status(403).json({ message: "권한이 없습니다." });
     try {
