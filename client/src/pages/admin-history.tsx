@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ReservationWithDetails } from "@shared/schema";
 import { AdminLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   Loader2,
   Search,
@@ -14,24 +14,42 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  ImageIcon,
   Maximize2,
   MessageSquare,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type StatusFilter = "all" | "pending" | "answered" | "cancelled";
 
 export default function AdminHistory() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReservationWithDetails | null>(null);
 
   const { data: reservations = [], isLoading } = useQuery<ReservationWithDetails[]>({
     queryKey: ["/api/teacher/all"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/reservations/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/all"] });
+      setDeleteTarget(null);
+      toast({ title: "삭제 완료", description: "질문 기록이 삭제되었습니다." });
+    },
+    onError: () => {
+      toast({ title: "삭제 실패", variant: "destructive" });
+    },
   });
 
   const filtered = reservations.filter((r) => {
@@ -138,9 +156,20 @@ export default function AdminHistory() {
                           <span className="font-bold text-sm">{r.studentName}</span>
                           <span className="text-xs text-muted-foreground">좌석 {r.seatNumber}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {r.createdAt ? format(new Date(r.createdAt), "MM/dd HH:mm", { locale: ko }) : ""}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {r.createdAt ? format(new Date(r.createdAt), "MM/dd HH:mm", { locale: ko }) : ""}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-red-50"
+                            onClick={() => setDeleteTarget(r)}
+                            data-testid={`button-delete-${r.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="flex flex-col md:flex-row gap-3">
@@ -216,6 +245,30 @@ export default function AdminHistory() {
               className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>질문 기록 삭제</DialogTitle>
+            <DialogDescription>
+              <strong>{deleteTarget?.studentName}</strong> 학생의 질문 기록을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} data-testid="button-delete-cancel">
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              data-testid="button-delete-confirm"
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "삭제"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>
