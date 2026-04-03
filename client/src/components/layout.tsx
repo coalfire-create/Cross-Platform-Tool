@@ -41,6 +41,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <Link href="/admin/students" className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${location === "/admin/students" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
             학생관리
           </Link>
+          <Link href="/admin/history" className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${location === "/admin/history" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+            질문기록
+          </Link>
           <button 
             onClick={() => logoutMutation.mutate()}
             className="text-xs sm:text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-destructive transition-colors"
